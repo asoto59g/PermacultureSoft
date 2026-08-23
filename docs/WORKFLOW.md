@@ -222,18 +222,23 @@ línea, sino cuántos metros se salen de la pendiente que tú fijaste.»*
 
 ## Escena 7 · Keyline
 
-Modo **Contorno 1:n** (caída 1:400 a 1:1000) para conducir agua. Modo
-**Offset** para el patrón de cultivo. Modo **Madre**: un clic y el
-programa elige la curva y los offsets.
+Antes: mapa *Drainage* visible. Panel izquierdo, bloque *Keyline*.
 
-*Keyline*: en 1:n u offset, primer clic en el *keypoint* (quiebre de la
-vaguada; *Drainage* ayuda a verlo) y segundo clic en el rumbo. En
-*Madre*, un solo clic cerca de esa cota. El color es un semáforo (ICL);
-si cruza un drenaje se parte. Puntos blancos: replanteo.
+1. **Contorno 1:n** (caída 1:400) si quieres conducir agua. Herramienta
+   *Keyline*: clic en el keypoint (quiebre de la vaguada), clic en el rumbo.
+2. **Offset** si solo quieres el patrón de cultivo paralelo. Dos clics.
+3. **Madre** para el atajo de un clic: elige curva + offsets a ambos
+   lados. Ajusta *Espaciamiento*, *Líneas* y *Replanteo* (10 m) *antes*.
+
+Lee la barra de estado (`3 aceptar · 1 corte · 49 puntos de replanteo`)
+y el color: verde ACEPTAR, ámbar REVISAR, naranja AJUSTAR, rojo
+REDISENAR. Cursor sobre la línea = ICL y pendiente; sobre el punto
+blanco = cadena y cota; azul = corte en drenaje (~2 ha).
 
 **Narración sugerida.** *«El keypoint no es un punto cualquiera. Es donde
 la vaguada cambia de forma. Si no lo ves, no dibujes el keyline. Verde
-se puede llevar a campo; rojo hay que redibujar.»*
+se puede llevar a campo; rojo hay que redibujar. Los puntos blancos son
+la estaca, con cota.»*
 
 ---
 
@@ -287,7 +292,7 @@ ventana de control a la fuerza: Detener y salir cierra los servidores.»*
 4. *Slope* + *Drainage*.
 5. Cuenca en el cauce. Embalse. Presión desde la cota del tanque.
 6. Camino origen–destino. Leer metros fuera de norma.
-7. Keyline desde el keypoint.
+7. Keyline desde el keypoint (1:n o Madre). Leer ICL, cortes y replanteo.
 8. Buscar sitios. Sombra en solsticios.
 9. Comparar presupuesto de las alternativas. Exportar JSON.
 
@@ -310,7 +315,7 @@ el nombre del botón que se pulsa.
 | 6:30 | Relieve | Slope, Drainage | Qué no se toca y dónde corre el agua |
 | 7:30 | Agua | Cuenca, embalse, presión, un tramo de tubería | Aforo en el cauce; 10 m ≈ 1 bar |
 | 9:30 | Camino | Dos clics, Enter, hover en alcantarilla | Mirar metros fuera de norma |
-| 10:30 | Keyline | Keypoint + dirección | Contorno 1:n conduce agua |
+| 10:30 | Keyline | Drainage + 1:n o Madre, hover ICL | Keypoint; verde a campo, blanco = estaca |
 | 11:20 | Sitios y sol | Buscar sitios + sombra solsticio | Primero plataforma, después sombra |
 | 12:30 | Cierre | Tabla de presupuesto, Exportar JSON, Detener | Comparar, no cotizar; apagar en la ventana de control |
 | 13:30 | Límites | Campo / DEM de mala calidad (opcional) | Contraste con estación y topografía de detalle |

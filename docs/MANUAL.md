@@ -207,31 +207,67 @@ Dos advertencias. La pendiente se reporta sobre un perfil remuestreado cada
 alineación preliminar, no un diseño geométrico vial: no resuelve curvas
 verticales, peralte ni radios mínimos.
 
-### 3.5 · Ecosistemas
+### 3.5 · Ecosistemas · Keyline
 
-**Keylines.** Tres modos:
+El keyline es prefactibilidad de trazado, no diseño de obra. Sirve para comparar
+alternativas sobre el DEM y llevar a campo los tramos que el semáforo deja en
+verde o ámbar. Antes de trazarlo activa el mapa *Drainage*: el *keypoint* es el
+quiebre de la vaguada, no un punto cualquiera de la ladera.
 
-- **Contorno 1:n.** Sigue la curva de nivel con una caída controlada, indicada
-  como razón en el control *Caída* (1:400 por defecto). Es el keyline clásico de
-  Yeomans: mueve el agua desde las vaguadas hacia los lomos con pendiente
-  suficiente para que corra pero no erosione. Caídas entre 1:400 y 1:1000 son el
-  rango habitual. Dos clics: keypoint y rumbo.
-- **Offset paralelo.** Genera líneas paralelas a una guía a distancia constante.
-  Sirve para el patrón de cultivo, no para conducir agua. Dos clics.
-- **Madre.** Un clic cerca del keypoint. Elige la mejor curva de nivel (cota,
-  largo, radio, hidrología) y lanza offsets a ambos lados, como el plugin
-  Basdonax. El intervalo de *curvas* del panel arriba alimenta esa búsqueda.
+En el panel izquierdo, bloque **Keyline**, elige el modo y los controles. En la
+barra superior pulsa la herramienta **Keyline**. El intervalo de *curvas* (arriba
+del mismo panel) también cuenta: el modo *Madre* busca entre esas curvas.
 
-El control *Líneas* fija cuántas se generan (en madre y offset, por lado).
-*Replanteo* marca puntos cada N metros con cota del DEM. Van en el mismo
-GeoJSON de la capa: *Exportar JSON* los lleva.
+#### Cómo se traza
 
-Cada tramo se puntúa (ICL, mismo criterio que el plugin Basdonax): pendiente
-longitudinal, radio mínimo, largo y cruce de cauce. El color es el semáforo:
-verde *ACEPTAR*, ámbar *REVISAR*, naranja *AJUSTAR*, rojo *REDISENAR*. Si la
-línea cruza una vaguada de ~2 ha o más, se parte y queda un punto azul en el
-corte. Los puntos blancos son replanteo. Pasa el cursor por la línea o el
-punto.
+| Modo | Para qué | Controles | Cómo se clica |
+| --- | --- | --- | --- |
+| **Contorno 1:n** | Conducir agua al estilo Yeomans: de la vaguada al lomo, con pendiente que corra y no erosione | *Caída* 1:200 a 1:800 (1:400 por defecto; 1:400–1:1000 es el rango habitual de campo) | Primer clic en el keypoint, segundo en el rumbo de cultivo |
+| **Offset** | Patrón de cultivo paralelo a una guía. No conduce agua | *Offset* 2–50 m; *Líneas* 2–12 por lado | Dos clics: origen y rumbo de la guía |
+| **Madre** | Un clic: elige la mejor curva cerca de esa cota y lanza offsets a ambos lados (lógica tipo plugin Basdonax) | *Espaciamiento* 2–50 m; *Líneas* por lado; *Intervalo curvas* más fino (0,50 m) da más candidatas | Un clic cerca del keypoint o de la cota de referencia |
+
+*Líneas* es el número de keylines a cada lado de la guía (offset y madre) o el
+número de paseos en contorno 1:n. *Replanteo* (5–25 m, 10 m por defecto) marca
+puntos blancos sobre cada tramo, con cadena y cota del DEM.
+
+Tras generar, la barra de estado resume: cuántos tramos *aceptar / revisar /
+ajustar / rediseñar*, cuántos cortes en drenaje y cuántos puntos de replanteo.
+
+#### Cómo se lee el resultado
+
+Cada tramo recibe un **ICL** (índice de calidad de línea, mismos umbrales que el
+plugin Basdonax *Keyline from DEM*): pendiente longitudinal máxima, radio
+mínimo, longitud y clase hidrológica. El color es el semáforo:
+
+| Color | Estado | ICL | Qué hacer |
+| --- | --- | --- | --- |
+| Verde | ACEPTAR | ≥ 85 | Candidato a llevar a campo |
+| Ámbar | REVISAR | 70–84 | Mirar el motivo en el cursor; suele bastar un ajuste de rumbo o caída |
+| Naranja | AJUSTAR | 55–69 | Pendiente, radio o cruce de agua fuera de rango; redibuja o acorta |
+| Rojo | REDISENAR | menor de 55 | No usar ese tramo; cambia modo, keypoint o caída |
+
+Pasa el cursor por la **línea**: verás índice, ICL, pendiente máxima y el texto
+de revisión (`pendiente alta`, `radio bajo`, `intercepta drenaje potencial`…).
+La **guía** (línea madre o el segmento de rumbo) se etiqueta *Guía keyline*.
+
+**Cortes en drenaje.** Si un tramo cruza una vaguada con acumulación de unos
+**2 ha** o más (el mismo umbral que las alcantarillas del camino), se parte y
+queda un **punto azul**. El cursor dice *Corte en drenaje potencial*. En fincas
+pequeñas o DEM de 10 m es normal que no haya cortes: no alcanza el umbral.
+
+**Replanteo.** Puntos blancos cada N metros. El cursor muestra la cadena
+(`Replanteo 40 m · 96.2 m`) — distancia a lo largo del tramo y cota. Van en el
+GeoJSON de la capa: *Exportar JSON* los incluye para estaca o GPS.
+
+#### Qué no es
+
+No sustituye el plugin de QGIS para replanteo de maquinaria, ni un diseño
+geométrico de terraza. En un DEM de 10 m con poco desnivel el ICL sale duro
+(naranja o rojo) aunque el trazo sea razonable: la pendiente se mide sobre
+celdas gruesas. Baja *Resample* no mejora el ICL; un DEM más fino sí.
+
+El umbral de 2 ha no se puede cambiar en la interfaz. El ICL no usa el WDI ni
+la fase de «construcción» del plugin.
 
 ### 3.6 · Edificaciones
 
@@ -352,3 +388,13 @@ sólo para el resultado que vayas a entregar.
 
 **La cuenca sale minúscula.** El punto de aforo cayó en una ladera. Activa el
 mapa *Drainage*, ubica el cauce y coloca el aforo encima.
+
+**El keyline sale todo rojo o no corta en la vaguada.** En DEM de 10 m el ICL
+castiga la pendiente celda a celda; prueba *Contorno 1:n* con caída más suave
+(1:600–1:800) o *Madre* con intervalo de curvas 0,50 m. Los cortes azules
+sólo aparecen si la acumulación llega a ~2 ha: en una finca de veinte hectáreas
+puede no haber ninguno, y eso no invalida el trazo.
+
+**La herramienta Keyline pide dos clics y elegí Madre.** Un clic basta. Si no
+pasa nada, confirma que el DEM está cargado y que el clic cayó sobre celdas con
+elevación, no sobre el nodata del borde.

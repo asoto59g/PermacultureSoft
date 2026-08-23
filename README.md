@@ -26,7 +26,7 @@ diez niveles, y esa es también la secuencia recomendada de trabajo.
 | 2 · Geografía | Carga de DEM, curvas de nivel, polígono envolvente, mapas de pendiente, orientación, sombreado y elevación, consulta de cota puntual, medición |
 | 3 · Agua | Delineación de cuencas, acumulación de flujo y humedad topográfica, campo de presión por gravedad, aptitud de embalse, diseño de tubería con pérdida de carga y presupuesto |
 | 4 · Acceso | Trazo de camino de menor costo con control de pendiente máxima, perfil longitudinal, movimiento de tierra, alcantarillas y presupuesto |
-| 5 · Ecosistemas | Keylines por contorno con caída controlada y por desplazamiento paralelo |
+| 5 · Ecosistemas | Keylines en tres modos (contorno 1:n, offset, línea madre), diagnóstico ICL, corte en drenajes y puntos de replanteo |
 | 6 · Edificaciones | Aptitud de plataforma según pendiente, sequedad, posición relativa, orientación solar y superficie disponible, con sitios candidatos ordenados |
 | 7 · Cercas | Pendiente |
 | 8 · Suelos | Pendiente |
@@ -57,6 +57,11 @@ de cauces. Reporta longitud 2D y 3D, pendiente media y máxima, metros fuera de
 norma, movimiento de tierra con sección balanceada y las alcantarillas
 necesarias.
 
+**Ecosistemas.** Tres modos de keyline: contorno 1:n (Yeomans), offset paralelo
+y línea madre (un clic + offsets). Cada tramo se diagnostica con ICL (pendiente,
+radio, largo, hidrología), se parte al cruzar un drenaje de ~2 ha y se marca
+replanteo cada N metros con cota del DEM. Detalle de uso: [manual § 3.5](docs/MANUAL.md).
+
 **Edificaciones.** La aptitud pondera pendiente (0,35), sequedad respecto al
 flujo concentrado (0,20), posición relativa en la ladera (0,15), orientación
 solar hacia el ecuador (0,15) y fracción de plataforma construible (0,15).
@@ -74,7 +79,8 @@ PermacultureSoft/
 │   ├── footprint.py    polígono envolvente del DEM
 │   ├── access.py       trazo de caminos
 │   ├── buildings.py    aptitud de edificación
-│   ├── ecosystems.py   keylines
+│   ├── ecosystems.py   keylines (contorno, offset, madre)
+│   ├── keyline_diag.py ICL, corte en drenajes, replanteo
 │   ├── pipes.py        hidráulica y presupuesto
 │   ├── solar.py        posición solar y sombra
 │   ├── crsutil.py      normalización de sistemas de coordenadas
