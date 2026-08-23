@@ -184,15 +184,31 @@ export function MapCanvas({
             id: layer.id,
             data: layer.data as never,
             stroked: true,
-            filled: false,
-            getLineColor: (d: { properties?: { type?: string } }) =>
-              d.properties?.type === "GuideLine"
-                ? [255, 200, 40, 255]
-                : [140, 255, 120, opacity],
+            filled: true,
+            pickable: true,
+            getLineColor: (d: {
+              properties?: { type?: string; status?: string };
+            }) => {
+              if (d.properties?.type === "GuideLine") return [255, 200, 40, 255];
+              const status = d.properties?.status;
+              if (status === "REVISAR") return [255, 196, 80, opacity];
+              if (status === "AJUSTAR") return [255, 140, 50, opacity];
+              if (status === "REDISENAR") return [255, 90, 80, opacity];
+              return [140, 255, 120, opacity];
+            },
             getLineWidth: (d: { properties?: { type?: string } }) =>
-              d.properties?.type === "GuideLine" ? 3 : 1.5,
+              d.properties?.type === "GuideLine" ? 3 : 2,
+            getFillColor: (d: { properties?: { type?: string } }) => {
+              if (d.properties?.type === "DrainBreak") return [80, 180, 255, 230];
+              if (d.properties?.type === "Stakeout") return [255, 255, 255, 230];
+              return [0, 0, 0, 0];
+            },
+            getPointRadius: (d: { properties?: { type?: string } }) =>
+              d.properties?.type === "Stakeout" ? 3 : 5,
+            pointRadiusUnits: "pixels",
             lineWidthUnits: "pixels",
             lineWidthMinPixels: 1,
+            parameters: { depthTest: false },
           })
         );
       }
@@ -354,6 +370,21 @@ export function MapCanvas({
           );
         } else if (props?.kind === "culvert") {
           onHoverFeature(`Alcantarilla #${props.index} · km ${props.chainage_m}`);
+        } else if (props?.kind === "drain-break" || props?.type === "DrainBreak") {
+          onHoverFeature("Corte en drenaje potencial");
+        } else if (props?.kind === "stakeout" || props?.type === "Stakeout") {
+          const z = typeof props.z === "number" ? `${props.z} m` : "sin cota";
+          onHoverFeature(`Replanteo ${props.chain_m ?? "?"} m · ${z}`);
+        } else if (props?.type === "Keyline") {
+          const icl = props.icl != null ? `ICL ${props.icl}` : "";
+          const slope =
+            typeof props.slope_max === "number" ? `máx ${props.slope_max}%` : "";
+          const bits = [props.status, icl, slope, props.review]
+            .filter((x) => x !== undefined && x !== null && x !== "")
+            .join(" · ");
+          onHoverFeature(`Keyline #${props.index ?? "?"} · ${bits || "sin diagnóstico"}`);
+        } else if (props?.type === "GuideLine") {
+          onHoverFeature("Guía keyline");
         } else if (props?.kind === "dem-footprint") {
           onHoverFeature(
             `Límite del DEM · ${props.area_ha} ha · ${

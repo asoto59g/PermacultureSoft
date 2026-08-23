@@ -140,9 +140,11 @@ export async function generateKeyline(
   numLines = 5,
   extra?: {
     demId?: string;
-    mode?: "contour" | "offset";
+    mode?: "contour" | "offset" | "mother";
     fallRatio?: number;
     resamplePct?: number;
+    contourInterval?: number;
+    stakeM?: number;
   }
 ): Promise<FeatureCollection> {
   const response = await apiFetch("/api/ecosystems/keyline/", {
@@ -159,6 +161,8 @@ export async function generateKeyline(
       mode: extra?.mode ?? "contour",
       fall_ratio: extra?.fallRatio ?? 0.0025,
       resample_pct: extra?.resamplePct ?? 50,
+      contour_interval: extra?.contourInterval ?? 0.5,
+      stake_m: extra?.stakeM ?? 10,
     }),
   });
   if (!response.ok) throw new Error(await readError(response));

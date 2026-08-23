@@ -54,8 +54,9 @@ type State = {
   contourInterval: number;
   keylineOffsetM: number;
   keylineCount: number;
-  keylineMode: "contour" | "offset";
+  keylineMode: "contour" | "offset" | "mother";
   keylineFall: number;
+  keylineStakeM: number;
   pipeDnMm: number;
   pipeFlowLs: number;
   roadMaxGradePct: number;
@@ -89,8 +90,9 @@ type Action =
   | { type: "SET_INTERVAL"; interval: number }
   | { type: "SET_KEYLINE_OFFSET"; offset: number }
   | { type: "SET_KEYLINE_COUNT"; count: number }
-  | { type: "SET_KEYLINE_MODE"; mode: "contour" | "offset" }
+  | { type: "SET_KEYLINE_MODE"; mode: "contour" | "offset" | "mother" }
   | { type: "SET_KEYLINE_FALL"; fall: number }
+  | { type: "SET_KEYLINE_STAKE"; stake: number }
   | { type: "SET_PIPE_DN"; dn: number }
   | { type: "SET_PIPE_FLOW"; flow: number }
   | { type: "SET_ROAD_GRADE"; grade: number }
@@ -154,6 +156,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, keylineMode: action.mode };
     case "SET_KEYLINE_FALL":
       return { ...state, keylineFall: action.fall };
+    case "SET_KEYLINE_STAKE":
+      return { ...state, keylineStakeM: action.stake };
     case "SET_PIPE_DN":
       return { ...state, pipeDnMm: action.dn };
     case "SET_PIPE_FLOW":
@@ -363,6 +367,7 @@ function reducer(state: State, action: Action): State {
         keylineCount: Number(p.keylineCount ?? state.keylineCount),
         keylineMode: (p.keylineMode as State["keylineMode"]) || state.keylineMode,
         keylineFall: Number(p.keylineFall ?? state.keylineFall),
+        keylineStakeM: Number(p.keylineStakeM ?? state.keylineStakeM),
         pipeDnMm: Number(p.pipeDnMm ?? state.pipeDnMm),
         pipeFlowLs: Number(p.pipeFlowLs ?? state.pipeFlowLs),
         roadMaxGradePct: Number(p.roadMaxGradePct ?? state.roadMaxGradePct),
@@ -432,6 +437,7 @@ const initialState: State = {
   keylineCount: 5,
   keylineMode: "contour",
   keylineFall: 400,
+  keylineStakeM: 10,
   pipeDnMm: 63,
   pipeFlowLs: 0.5,
   roadMaxGradePct: 12,
@@ -829,7 +835,8 @@ export function useProject() {
       if (tool === "keyline") {
         const prev = state.draft?.coords || [];
         const coords = [...prev, [lon, lat]];
-        if (coords.length === 1) {
+        const oneClick = state.keylineMode === "mother";
+        if (!oneClick && coords.length === 1) {
           dispatch({ type: "SET_DRAFT", draft: { coords } });
           dispatch({
             type: "SET_STATUS",
@@ -837,13 +844,15 @@ export function useProject() {
           });
           return;
         }
+        const a = coords[0];
+        const b = coords[coords.length - 1];
         dispatch({ type: "SET_LOADING", loading: true });
         try {
           const geojson = await generateKeyline(
-            coords[0][0],
-            coords[0][1],
-            coords[1][0],
-            coords[1][1],
+            a[0],
+            a[1],
+            b[0],
+            b[1],
             state.keylineOffsetM,
             state.keylineCount,
             {
@@ -851,16 +860,22 @@ export function useProject() {
               mode: state.keylineMode,
               fallRatio: 1 / state.keylineFall,
               resamplePct: state.resamplePct,
+              contourInterval: state.contourInterval,
+              stakeM: state.keylineStakeM,
             }
           );
+          const summary = summarizeKeyline(geojson);
+          const base =
+            state.keylineMode === "contour"
+              ? `Keyline 1:${state.keylineFall}`
+              : state.keylineMode === "mother"
+                ? `Keyline madre ${state.keylineOffsetM} m`
+                : `Keyline offset ${state.keylineOffsetM} m`;
           dispatch({
             type: "PUSH_LAYER",
             layer: {
               id: newId("kl"),
-              name:
-                state.keylineMode === "contour"
-                  ? `Keyline 1:${state.keylineFall}`
-                  : `Keyline offset ${state.keylineOffsetM} m`,
+              name: summary.label ? `${base} · ${summary.label}` : base,
               category: "ecosystems",
               kind: "keyline",
               visible: true,
@@ -868,7 +883,7 @@ export function useProject() {
               data: geojson,
             },
           });
-          dispatch({ type: "SET_STATUS", message: "Patrón keyline generado" });
+          dispatch({ type: "SET_STATUS", message: summary.message });
         } catch (err) {
           dispatch({
             type: "SET_ERROR",
@@ -888,6 +903,8 @@ export function useProject() {
       state.keylineCount,
       state.keylineMode,
       state.keylineFall,
+      state.keylineStakeM,
+      state.contourInterval,
       state.resamplePct,
       state.gaussianSigma,
       state.pipeDnMm,
@@ -1156,6 +1173,7 @@ export function useProject() {
       keylineCount: state.keylineCount,
       keylineMode: state.keylineMode,
       keylineFall: state.keylineFall,
+      keylineStakeM: state.keylineStakeM,
       pipeDnMm: state.pipeDnMm,
       pipeFlowLs: state.pipeFlowLs,
       roadMaxGradePct: state.roadMaxGradePct,
@@ -1176,6 +1194,7 @@ export function useProject() {
       state.keylineCount,
       state.keylineMode,
       state.keylineFall,
+      state.keylineStakeM,
       state.pipeDnMm,
       state.pipeFlowLs,
       state.roadMaxGradePct,
@@ -1305,3 +1324,36 @@ type OverlayResponseLike = {
   geotiff_b64?: string | null;
   geojson?: RasterOverlay["geojson"];
 };
+
+function summarizeKeyline(geojson: FeatureCollection): { label: string; message: string } {
+  let accept = 0;
+  let review = 0;
+  let adjust = 0;
+  let redesign = 0;
+  let cuts = 0;
+  let stakes = 0;
+  for (const feat of geojson.features) {
+    const t = feat.properties?.type;
+    const status = feat.properties?.status;
+    if (t === "DrainBreak") cuts += 1;
+    if (t === "Stakeout") stakes += 1;
+    if (t !== "Keyline") continue;
+    if (status === "ACEPTAR") accept += 1;
+    else if (status === "REVISAR") review += 1;
+    else if (status === "AJUSTAR") adjust += 1;
+    else if (status === "REDISENAR") redesign += 1;
+  }
+  const parts = [
+    accept ? `${accept} aceptar` : "",
+    review ? `${review} revisar` : "",
+    adjust ? `${adjust} ajustar` : "",
+    redesign ? `${redesign} rediseñar` : "",
+  ].filter(Boolean);
+  const label = parts[0] ? parts[0] : "";
+  const cutTxt = cuts ? ` · ${cuts} corte${cuts === 1 ? "" : "s"} en drenaje` : "";
+  const stakeTxt = stakes ? ` · ${stakes} puntos de replanteo` : "";
+  const message = parts.length
+    ? `Keyline: ${parts.join(", ")}${cutTxt}${stakeTxt}`
+    : "Patrón keyline generado";
+  return { label, message };
+}

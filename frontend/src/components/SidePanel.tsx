@@ -7,8 +7,9 @@ type Props = {
   contourInterval: number;
   keylineOffsetM: number;
   keylineCount: number;
-  keylineMode: "contour" | "offset";
+  keylineMode: "contour" | "offset" | "mother";
   keylineFall: number;
+  keylineStakeM: number;
   pipeDnMm: number;
   pipeFlowLs: number;
   roadMaxGradePct: number;
@@ -21,8 +22,9 @@ type Props = {
   onInterval: (v: number) => void;
   onKeylineOffset: (v: number) => void;
   onKeylineCount: (v: number) => void;
-  onKeylineMode: (v: "contour" | "offset") => void;
+  onKeylineMode: (v: "contour" | "offset" | "mother") => void;
   onKeylineFall: (v: number) => void;
+  onKeylineStake: (v: number) => void;
   onPipeDn: (v: number) => void;
   onPipeFlow: (v: number) => void;
   onRoadGrade: (v: number) => void;
@@ -62,6 +64,7 @@ export function SidePanel({
   keylineCount,
   keylineMode,
   keylineFall,
+  keylineStakeM,
   pipeDnMm,
   pipeFlowLs,
   roadMaxGradePct,
@@ -76,6 +79,7 @@ export function SidePanel({
   onKeylineCount,
   onKeylineMode,
   onKeylineFall,
+  onKeylineStake,
   onPipeDn,
   onPipeFlow,
   onRoadGrade,
@@ -186,16 +190,22 @@ export function SidePanel({
       <div className="rounded border border-zinc-800 p-2">
         <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">Keyline</p>
         <div className="mb-2 flex gap-1">
-          {(["contour", "offset"] as const).map((m) => (
+          {(
+            [
+              ["contour", "Contorno 1:n"],
+              ["offset", "Offset"],
+              ["mother", "Madre"],
+            ] as const
+          ).map(([m, label]) => (
             <button
               key={m}
               type="button"
               onClick={() => onKeylineMode(m)}
-              className={`flex-1 rounded px-2 py-1 text-[10px] ${
+              className={`flex-1 rounded px-1 py-1 text-[10px] ${
                 keylineMode === m ? "bg-amber-700 text-white" : "bg-zinc-800 text-zinc-400"
               }`}
             >
-              {m === "contour" ? "Contorno 1:n" : "Offset paralelo"}
+              {label}
             </button>
           ))}
         </div>
@@ -218,7 +228,7 @@ export function SidePanel({
         ) : (
           <label className="block">
             <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
-              <span>Offset</span>
+              <span>{keylineMode === "mother" ? "Espaciamiento" : "Offset"}</span>
               <span>{keylineOffsetM} m</span>
             </span>
             <input
@@ -247,6 +257,28 @@ export function SidePanel({
             className="w-full accent-amber-500"
           />
         </label>
+        <label className="mt-2 block">
+          <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
+            <span>Replanteo</span>
+            <span>{keylineStakeM} m</span>
+          </span>
+          <input
+            type="range"
+            min={5}
+            max={25}
+            step={1}
+            value={keylineStakeM}
+            onChange={(e) => onKeylineStake(Number(e.target.value))}
+            className="w-full accent-amber-500"
+          />
+        </label>
+        <p className="mt-2 text-[10px] leading-snug text-zinc-500">
+          {keylineMode === "mother"
+            ? "Un clic cerca del keypoint: elige una curva madre y lanza offsets. "
+            : "Dos clics: keypoint y rumbo. "}
+          Semáforo ICL. Cortes en vaguadas. Puntos blancos = replanteo (cota del
+          DEM). Quedan en el GeoJSON de la capa.
+        </p>
       </div>
 
       <div className="rounded border border-zinc-800 p-2">

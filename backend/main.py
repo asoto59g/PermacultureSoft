@@ -19,7 +19,12 @@ from access import design_road  # noqa: E402
 from buildings import building_suitability  # noqa: E402
 from contours import elevation_contours  # noqa: E402
 from crsutil import transformer_from_wgs84, transformer_to_wgs84  # noqa: E402
-from ecosystems import generate_contour_keylines, generate_keyline_pattern  # noqa: E402
+from ecosystems import (  # noqa: E402
+    generate_contour_keylines,
+    generate_keyline_pattern,
+    generate_mother_keylines,
+)
+from keyline_diag import diagnose_and_cut_keylines  # noqa: E402
 from footprint import dem_footprint  # noqa: E402
 from hydrology import (  # noqa: E402
     calculate_gravity_pressure,
@@ -124,6 +129,8 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             nodata = dataset.nodata
             if nodata is not None:
                 elevation = np.where(elevation == nodata, np.nan, elevation)
+            # Nodata tipo 3.4e38 a veces no coincide bit a bit con el tag.
+            elevation = np.where((np.abs(elevation) > 1e5) | ~np.isfinite(elevation), np.nan, elevation)
 
             geojson, contour_meta = elevation_contours(
                 elevation, transform, dataset.crs, interval
@@ -149,7 +156,8 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             # El polígono es un extra: si falla, la carga del DEM sigue válida.
             try:
                 footprint = dem_footprint(elevation, transform, dataset.crs)
-            except Exception:
+            except Exception as exc:
+                print(f"footprint del DEM no extraído: {exc}")
                 footprint = None
 
         return {
@@ -292,41 +300,66 @@ async def get_watershed(req: WatershedRequest):
 class KeylineRequest(BaseModel):
     lon1: float
     lat1: float
-    lon2: float
-    lat2: float
+    lon2: float | None = None
+    lat2: float | None = None
     offset_distance: float = Field(default=10.0, description="Offset in meters")
     num_lines: int = Field(default=5, ge=1, le=50)
     dem_id: str | None = None
     mode: str = "contour"
     fall_ratio: float = Field(default=0.0025, gt=0, le=0.05)
     resample_pct: float = 50
+    contour_interval: float = Field(default=0.5, gt=0)
+    stake_m: float = Field(default=10.0, ge=0, le=50)
 
 
 @app.post("/api/ecosystems/keyline")
 @app.post("/api/ecosystems/keyline/")
 async def generate_keyline(req: KeylineRequest):
     try:
-        if req.mode == "offset" or not req.dem_id:
+        lon2 = req.lon1 if req.lon2 is None else req.lon2
+        lat2 = req.lat1 if req.lat2 is None else req.lat2
+        if req.mode == "mother":
+            if not req.dem_id:
+                raise HTTPException(status_code=400, detail="El modo madre necesita un DEM.")
+            geojson = generate_mother_keylines(
+                str(_dem_path(req.dem_id)),
+                req.lon1,
+                req.lat1,
+                req.offset_distance,
+                req.num_lines,
+                req.contour_interval,
+                req.resample_pct,
+                req.stake_m,
+            )
+        elif req.mode == "offset" or not req.dem_id:
             geojson = generate_keyline_pattern(
                 req.lon1,
                 req.lat1,
-                req.lon2,
-                req.lat2,
+                lon2,
+                lat2,
                 req.offset_distance,
                 req.num_lines,
             )
+            if req.dem_id:
+                geojson = diagnose_and_cut_keylines(
+                    str(_dem_path(req.dem_id)),
+                    geojson,
+                    req.resample_pct,
+                    stake_m=req.stake_m,
+                )
         else:
             path = _dem_path(req.dem_id)
             geojson = generate_contour_keylines(
                 str(path),
                 req.lon1,
                 req.lat1,
-                req.lon2,
-                req.lat2,
+                lon2,
+                lat2,
                 req.offset_distance,
                 req.num_lines,
                 req.fall_ratio,
                 req.resample_pct,
+                req.stake_m,
             )
         return {"status": "success", "geojson": geojson}
     except HTTPException:

@@ -14,9 +14,10 @@ import {
   type SourceStatus,
 } from "@/lib/climate";
 
-export const revalidate = 21600;
-/** Diez años de CHIRPS rondan los 30 s; el resto va en paralelo. */
-export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+/** Diez años de CHIRPS pueden pasar de 30 s si ClimateSERV está cargado. */
+export const maxDuration = 120;
 
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -25,7 +26,7 @@ const FORECAST_DAYS = 10;
 /** El reanálisis va ~7 días atrás; el pronóstico cubre el hueco con past_days. */
 const BRIDGE_DAYS = 21;
 /** Presupuesto para CHIRPS. Si se pasa, la lluvia se queda en ERA5. */
-const CHIRPS_BUDGET_MS = 42_000;
+const CHIRPS_BUDGET_MS = 90_000;
 /** IFS 0.25°: es el único ECMWF de Open-Meteo con las siete diarias. */
 const FORECAST_MODEL = "ecmwf_ifs025";
 const FORECAST_MODEL_LABEL = "ECMWF IFS 0.25°";
@@ -151,6 +152,10 @@ function forecastUrl(lat: number, lon: number): string {
   return `${FORECAST_URL}?${params}`;
 }
 
+function validVertex(lon: number, lat: number): boolean {
+  return Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
 /** "lon,lat;lon,lat;…" tal como lo manda el panel desde el límite del DEM. */
 function parseRing(text: string | null): number[][] | null {
   if (!text) return null;
@@ -159,11 +164,36 @@ function parseRing(text: string | null): number[][] | null {
     const [lonText, latText] = pair.split(",");
     const lon = Number(lonText);
     const lat = Number(latText);
-    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
-    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    if (!validVertex(lon, lat)) return null;
     ring.push([lon, lat]);
   }
   return ring.length >= 3 ? ring : null;
+}
+
+/** Anillo [lon, lat][] del POST; ignora un par [lat, lon] mal etiquetado. */
+function parseRingJson(value: unknown): number[][] | null {
+  if (typeof value === "string") return parseRing(value);
+  if (!Array.isArray(value) || value.length < 3) return null;
+  const ring: number[][] = [];
+  for (const pair of value) {
+    if (!Array.isArray(pair) || pair.length < 2) return null;
+    const lon = Number(pair[0]);
+    const lat = Number(pair[1]);
+    if (!validVertex(lon, lat)) return null;
+    ring.push([lon, lat]);
+  }
+  return ring;
+}
+
+/** Una celda CHIRPS (~0.05°) alrededor del punto, si no hay polígono del DEM. */
+function boxAround(lon: number, lat: number, halfDeg = 0.025): number[][] {
+  return [
+    [lon - halfDeg, lat - halfDeg],
+    [lon + halfDeg, lat - halfDeg],
+    [lon + halfDeg, lat + halfDeg],
+    [lon - halfDeg, lat + halfDeg],
+    [lon - halfDeg, lat - halfDeg],
+  ];
 }
 
 /** Sustituye la lluvia de cada día por CHIRPS donde exista. Devuelve cuántos cambió. */
@@ -183,12 +213,7 @@ function reason(result: PromiseRejectedResult): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const lat = Number(params.get("lat"));
-  const lon = Number(params.get("lon"));
-  const requestedYears = Number(params.get("years") ?? 10);
-
+async function buildSeries(lat: number, lon: number, requestedYears: number, demRing: number[][] | null) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
     return NextResponse.json(
       { error: "Coordenadas inválidas. Se esperan lat y lon en grados decimales." },
@@ -205,7 +230,8 @@ export async function GET(request: Request) {
   const climEnd = `${lastComplete}-12-31`;
   const yearStart = `${currentYear}-01-01`;
 
-  const ring = parseRing(params.get("poly"));
+  const usedDemPolygon = Boolean(demRing);
+  const ring = demRing ?? boxAround(lon, lat);
 
   // Un solo trabajo de CHIRPS cubre climatología y año en curso: dos trabajos
   // cuestan casi lo mismo que uno largo y duplican el riesgo de agotar el tiempo.
@@ -213,9 +239,7 @@ export async function GET(request: Request) {
     fetchOpenMeteo(archiveUrl(lat, lon, climStart, climEnd)),
     fetchOpenMeteo(archiveUrl(lat, lon, yearStart, isoDate(today))),
     fetchOpenMeteo(forecastUrl(lat, lon)),
-    ring
-      ? fetchChirpsDaily(ring, climStart, isoDate(today), CHIRPS_BUDGET_MS)
-      : Promise.reject(new Error("Sin polígono del DEM: la lluvia usa el punto central.")),
+    fetchChirpsDaily(ring, climStart, isoDate(today), CHIRPS_BUDGET_MS),
   ]);
 
   const sources: SourceStatus[] = [];
@@ -301,7 +325,9 @@ export async function GET(request: Request) {
       periodEnd: climEnd,
       years: byYear.size,
       model: chirps
-        ? "ERA5-Seamless 11–28 km · lluvia CHIRPS 5 km sobre el polígono"
+        ? usedDemPolygon
+          ? "ERA5-Seamless 11–28 km · lluvia CHIRPS 5 km sobre el polígono del DEM"
+          : "ERA5-Seamless 11–28 km · lluvia CHIRPS 5 km en la celda del sitio"
         : "ERA5-Seamless vía Open-Meteo · 11–28 km según variable",
       daily: climatologyDaily(byYear),
       monthly: climatologyMonthly(perYearMonthly),
@@ -370,8 +396,11 @@ export async function GET(request: Request) {
       label: "Lluvia CHIRPS 0.05°",
       ok: true,
       detail:
-        `${chirpsDays} días sobre el polígono del DEM (${ring?.length ?? 0} vértices), ` +
-        `${chirps.firstDate} a ${chirps.lastDate}` +
+        `${chirpsDays} días ` +
+        (usedDemPolygon
+          ? `sobre el polígono del DEM (${ring.length} vértices)`
+          : "en una celda de 0.05° alrededor del punto") +
+        `, ${chirps.firstDate} a ${chirps.lastDate}` +
         (chirps.cached ? ", en caché" : `, ${(chirps.elapsedMs / 1000).toFixed(1)} s`),
     });
   } else {
@@ -389,7 +418,7 @@ export async function GET(request: Request) {
       /** Después de esta fecha la lluvia del año en curso ya no es CHIRPS. */
       chirpsThrough: chirps?.lastDate ?? null,
       forecastModel: FORECAST_MODEL_LABEL,
-      areal: Boolean(chirps),
+      areal: Boolean(chirps) && usedDemPolygon,
     },
     site: {
       lat: meta.latitude ?? lat,
@@ -405,4 +434,30 @@ export async function GET(request: Request) {
   };
 
   return NextResponse.json(body);
+}
+
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  return buildSeries(
+    Number(params.get("lat")),
+    Number(params.get("lon")),
+    Number(params.get("years") ?? 10),
+    parseRing(params.get("poly"))
+  );
+}
+
+export async function POST(request: Request) {
+  const payload = (await request.json()) as {
+    lat?: unknown;
+    lon?: unknown;
+    years?: unknown;
+    ring?: unknown;
+    poly?: unknown;
+  };
+  return buildSeries(
+    Number(payload.lat),
+    Number(payload.lon),
+    Number(payload.years ?? 10),
+    parseRingJson(payload.ring ?? payload.poly)
+  );
 }

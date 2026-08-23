@@ -120,6 +120,7 @@ export default function Home() {
           keylineCount={state.keylineCount}
           keylineMode={state.keylineMode}
           keylineFall={state.keylineFall}
+          keylineStakeM={state.keylineStakeM}
           pipeDnMm={state.pipeDnMm}
           pipeFlowLs={state.pipeFlowLs}
           roadMaxGradePct={state.roadMaxGradePct}
@@ -136,6 +137,7 @@ export default function Home() {
           onKeylineCount={(v) => dispatch({ type: "SET_KEYLINE_COUNT", count: v })}
           onKeylineMode={(v) => dispatch({ type: "SET_KEYLINE_MODE", mode: v })}
           onKeylineFall={(v) => dispatch({ type: "SET_KEYLINE_FALL", fall: v })}
+          onKeylineStake={(v) => dispatch({ type: "SET_KEYLINE_STAKE", stake: v })}
           onPipeDn={(v) => dispatch({ type: "SET_PIPE_DN", dn: v })}
           onPipeFlow={(v) => dispatch({ type: "SET_PIPE_FLOW", flow: v })}
           onRoadGrade={(v) => dispatch({ type: "SET_ROAD_GRADE", grade: v })}

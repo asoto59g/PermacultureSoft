@@ -31,22 +31,19 @@ const RESOLUTIONS: { id: Resolution; label: string }[] = [
 
 const CLIM_COLOR = "#a1a1aa";
 
-/** El anillo viaja como "lon,lat;lon,lat;…" para que la consulta siga siendo GET. */
-function encodeRing(ring: number[][] | null | undefined): string {
-  if (!ring || ring.length < 3) return "";
-  return ring.map(([lon, lat]) => `${lon.toFixed(5)},${lat.toFixed(5)}`).join(";");
-}
-
 export function ClimatePanel({ lat, lon, siteLabel, ring, onClose }: Props) {
   const [variable, setVariable] = useState<ClimateVariableId>("precipitation");
   const [resolution, setResolution] = useState<Resolution>("monthly");
   const [smoothDaily, setSmoothDaily] = useState(true);
   const [years, setYears] = useState(10);
 
+  const closedRing = ring && ring.length >= 3 ? ring : null;
+  const ringKey = closedRing
+    ? closedRing.map(([x, y]) => `${x.toFixed(5)},${y.toFixed(5)}`).join(";")
+    : "";
   // La consulta se identifica por su clave; "cargando" es que el resultado
   // guardado todavía no corresponde a la clave vigente.
-  const poly = encodeRing(ring);
-  const requestKey = `${lat.toFixed(4)}|${lon.toFixed(4)}|${years}|${poly}`;
+  const requestKey = `${lat.toFixed(5)}|${lon.toFixed(5)}|${years}|${ringKey}`;
   const [result, setResult] = useState<{
     key: string;
     data?: ClimateResponse;
@@ -55,10 +52,28 @@ export function ClimatePanel({ lat, lon, siteLabel, ring, onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    const [latText, lonText, yearsText, polyText] = requestKey.split("|");
-    const query = new URLSearchParams({ lat: latText, lon: lonText, years: yearsText });
-    if (polyText) query.set("poly", polyText);
-    fetch(`/api/climate/series?${query}`)
+    const ringPayload = ringKey
+      ? ringKey.split(";").map((pair) => pair.split(",").map(Number))
+      : null;
+
+    const load = async () => {
+      const posted = await fetch("/api/climate/series", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lon, years, ring: ringPayload }),
+      });
+      if (posted.status !== 405) return posted;
+      // Build compilado viejo: solo tenía GET.
+      const query = new URLSearchParams({
+        lat: String(lat),
+        lon: String(lon),
+        years: String(years),
+      });
+      if (ringKey) query.set("poly", ringKey);
+      return fetch(`/api/climate/series?${query}`);
+    };
+
+    load()
       .then(async (response) => {
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.error || `Error ${response.status}`);
@@ -78,7 +93,8 @@ export function ClimatePanel({ lat, lon, siteLabel, ring, onClose }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [requestKey]);
+    // requestKey ya serializa lat, lon, años y el anillo.
+  }, [requestKey, lat, lon, years, ringKey]);
 
   const loading = result?.key !== requestKey;
   const data = result?.key === requestKey ? (result.data ?? null) : null;
@@ -250,18 +266,24 @@ export function ClimatePanel({ lat, lon, siteLabel, ring, onClose }: Props) {
         {data && (
           <span
             className={`rounded px-1.5 py-0.5 text-[9px] ${
-              data.precip.areal
+              data.precip.source === "CHIRPS"
                 ? "bg-sky-950 text-sky-300"
                 : "bg-zinc-800 text-zinc-400"
             }`}
             title={
-              data.precip.areal
-                ? "Lluvia promediada sobre el polígono del DEM"
-                : "Sin polígono del DEM: la lluvia se muestrea en el punto central"
+              data.precip.source === "CHIRPS" && data.precip.areal
+                ? "Lluvia CHIRPS promediada sobre el polígono del DEM"
+                : data.precip.source === "CHIRPS"
+                  ? "Lluvia CHIRPS en la celda de 0.05° del sitio"
+                  : "ClimateSERV no respondió: se grafica la lluvia de ERA5"
             }
           >
             Lluvia {data.precip.source}
-            {data.precip.areal ? " · por área" : " · puntual"}
+            {data.precip.source === "CHIRPS"
+              ? data.precip.areal
+                ? " · por área"
+                : " · celda 5 km"
+              : " · puntual ERA5"}
           </span>
         )}
         <label className="ml-auto flex items-center gap-1 text-[10px] text-zinc-400">

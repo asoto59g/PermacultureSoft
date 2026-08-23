@@ -223,14 +223,17 @@ línea, sino cuántos metros se salen de la pendiente que tú fijaste.»*
 ## Escena 7 · Keyline
 
 Modo **Contorno 1:n** (caída 1:400 a 1:1000) para conducir agua. Modo
-**Offset paralelo** para el patrón de cultivo, no para hidrología.
+**Offset** para el patrón de cultivo. Modo **Madre**: un clic y el
+programa elige la curva y los offsets.
 
-*Keyline*: primer clic en el *keypoint* (quiebre de la vaguada, de cóncavo
-a convexo; *Drainage* ayuda a verlo) y segundo clic en la dirección de
-las líneas. *Líneas* fija cuántas salen.
+*Keyline*: en 1:n u offset, primer clic en el *keypoint* (quiebre de la
+vaguada; *Drainage* ayuda a verlo) y segundo clic en el rumbo. En
+*Madre*, un solo clic cerca de esa cota. El color es un semáforo (ICL);
+si cruza un drenaje se parte. Puntos blancos: replanteo.
 
 **Narración sugerida.** *«El keypoint no es un punto cualquiera. Es donde
-la vaguada cambia de forma. Si no lo ves, no dibujes el keyline.»*
+la vaguada cambia de forma. Si no lo ves, no dibujes el keyline. Verde
+se puede llevar a campo; rojo hay que redibujar.»*
 
 ---
 

@@ -209,19 +209,29 @@ verticales, peralte ni radios mínimos.
 
 ### 3.5 · Ecosistemas
 
-**Keylines.** Dos modos:
+**Keylines.** Tres modos:
 
 - **Contorno 1:n.** Sigue la curva de nivel con una caída controlada, indicada
   como razón en el control *Caída* (1:400 por defecto). Es el keyline clásico de
   Yeomans: mueve el agua desde las vaguadas hacia los lomos con pendiente
   suficiente para que corra pero no erosione. Caídas entre 1:400 y 1:1000 son el
-  rango habitual.
+  rango habitual. Dos clics: keypoint y rumbo.
 - **Offset paralelo.** Genera líneas paralelas a una guía a distancia constante.
-  Sirve para el patrón de cultivo, no para conducir agua.
+  Sirve para el patrón de cultivo, no para conducir agua. Dos clics.
+- **Madre.** Un clic cerca del keypoint. Elige la mejor curva de nivel (cota,
+  largo, radio, hidrología) y lanza offsets a ambos lados, como el plugin
+  Basdonax. El intervalo de *curvas* del panel arriba alimenta esa búsqueda.
 
-El control *Líneas* fija cuántas se generan. Activa la herramienta **Keyline** y
-haz click en dos puntos: primero el keypoint —el quiebre de la vaguada donde la
-pendiente pasa de cóncava a convexa— y luego la dirección de cultivo.
+El control *Líneas* fija cuántas se generan (en madre y offset, por lado).
+*Replanteo* marca puntos cada N metros con cota del DEM. Van en el mismo
+GeoJSON de la capa: *Exportar JSON* los lleva.
+
+Cada tramo se puntúa (ICL, mismo criterio que el plugin Basdonax): pendiente
+longitudinal, radio mínimo, largo y cruce de cauce. El color es el semáforo:
+verde *ACEPTAR*, ámbar *REVISAR*, naranja *AJUSTAR*, rojo *REDISENAR*. Si la
+línea cruza una vaguada de ~2 ha o más, se parte y queda un punto azul en el
+corte. Los puntos blancos son replanteo. Pasa el cursor por la línea o el
+punto.
 
 ### 3.6 · Edificaciones
 

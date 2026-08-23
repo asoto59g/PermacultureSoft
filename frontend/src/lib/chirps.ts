@@ -10,7 +10,10 @@
  * Sólo servidor. No importar desde componentes de cliente.
  */
 
-const BASE = "https://climateserv.servirglobal.net/api";
+const BASES = [
+  "https://climateserv.servirglobal.net/api",
+  "https://climateserv.servirglobal.net/chirps",
+];
 
 /** Identificador del dataset CHIRPS diario en ClimateSERV. */
 const DATATYPE_CHIRPS_DAILY = "0";
@@ -84,13 +87,24 @@ export function trimRing(ring: number[][]): number[][] {
 }
 
 async function callApi(path: string, init?: RequestInit): Promise<unknown> {
-  const response = await fetch(`${BASE}/${path}`, {
-    ...init,
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error(`ClimateSERV respondió ${response.status}`);
-  return unwrap(await response.text());
+  let lastError: Error | null = null;
+  for (const base of BASES) {
+    try {
+      const response = await fetch(`${base}/${path}`, {
+        ...init,
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        lastError = new Error(`ClimateSERV respondió ${response.status}`);
+        continue;
+      }
+      return unwrap(await response.text());
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+  throw lastError ?? new Error("ClimateSERV no respondió.");
 }
 
 async function submit(ring: number[][], start: string, end: string): Promise<string> {
@@ -143,7 +157,10 @@ function collect(rows: RawRow[]): Map<string, number> {
     const raw = typeof row.value === "number" ? row.value : row.value?.avg;
     // Los huecos vienen como -9999; nunca como negativo legítimo.
     if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) continue;
-    byDate.set(`${year}-${month}-${day}`, Math.round(raw * 100) / 100);
+    byDate.set(
+      `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+      Math.round(raw * 100) / 100
+    );
   }
   return byDate;
 }

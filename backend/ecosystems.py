@@ -7,6 +7,7 @@ from shapely.geometry import LineString, mapping
 from shapely.ops import transform
 
 from crsutil import transformer_from_wgs84, transformer_to_wgs84
+from keyline_diag import diagnose_and_cut_keylines
 from surfaces import load_dem, resample_dem, terrain_derivatives
 
 
@@ -80,6 +81,7 @@ def generate_contour_keylines(
     num_lines: int = 5,
     fall_ratio: float = 1 / 400,
     resample_pct: float = 50,
+    stake_m: float = 10.0,
 ) -> dict:
     """
     Yeomans-style cultivation lines: walk nearly on contour in the guide
@@ -200,4 +202,194 @@ def generate_contour_keylines(
 
     if len(features) < 2:
         raise ValueError("No se pudo trazar keyline sobre el DEM (prueba otro rumbo).")
-    return {"type": "FeatureCollection", "features": features}
+    raw = {"type": "FeatureCollection", "features": features}
+    return diagnose_and_cut_keylines(path, raw, resample_pct, stake_m=stake_m)
+
+
+def generate_mother_keylines(
+    path: str,
+    lon: float,
+    lat: float,
+    spacing_m: float = 10.0,
+    num_lines: int = 5,
+    contour_interval: float = 0.5,
+    resample_pct: float = 50,
+    stake_m: float = 10.0,
+) -> dict:
+    """Línea madre desde las curvas del DEM y offsets a ambos lados.
+
+    El clic fija la cota de referencia y favorece curvas cercanas.
+    Lógica de selección alineada con la Fase 2 del plugin Basdonax.
+    """
+    from contours import elevation_contours
+    from hydrology import get_hydro
+    from keyline_diag import STREAM_AREA_M2, _chaikin, _length_m, _min_radius
+    from shapely.geometry import box
+
+    hydro = get_hydro(path, resample_pct, 0.0)
+    dem = hydro["dem"]
+    acc = hydro["acc"]
+    elev = dem["elevation"]
+    gt = dem["transform"]
+    mx, my = dem["pixel_m"]
+    cell_area = max(mx * my, 1e-6)
+    threshold_area = max(4.0, STREAM_AREA_M2 / cell_area) * cell_area
+    is_geo = abs(gt.a) < 1
+    to_native = transformer_from_wgs84(dem["crs"])
+    to_wgs = transformer_to_wgs84(dem["crs"])
+    h, w = elev.shape
+
+    def to_xy(lon_i: float, lat_i: float) -> tuple[float, float]:
+        if to_native is None:
+            return lon_i, lat_i
+        return to_native.transform(lon_i, lat_i)
+
+    def dist_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+        if is_geo:
+            mid_lat = 0.5 * (a[1] + b[1])
+            dx = (b[0] - a[0]) * 111_320 * max(0.2, math.cos(math.radians(mid_lat)))
+            dy = (b[1] - a[1]) * 110_540
+            return math.hypot(dx, dy)
+        return math.hypot(b[0] - a[0], b[1] - a[1])
+
+    cx, cy = to_xy(lon, lat)
+    r0, c0 = rowcol(gt, cx, cy)
+    if r0 < 0 or c0 < 0 or r0 >= h or c0 >= w or not np.isfinite(elev[r0, c0]):
+        raise ValueError("El punto está fuera del DEM.")
+    z_ref = float(elev[r0, c0])
+
+    contours, _meta = elevation_contours(elev, gt, dem["crs"], contour_interval)
+    candidates: list[tuple[float, list[tuple[float, float]], float]] = []
+    for feat in contours.get("features") or []:
+        coords = feat.get("geometry", {}).get("coordinates") or []
+        if len(coords) < 2:
+            continue
+        pts = [to_xy(float(p[0]), float(p[1])) for p in coords]
+        length = _length_m(pts, dist_m)
+        if length < 20.0:
+            continue
+        dmin = min(dist_m((cx, cy), p) for p in pts[:: max(1, len(pts) // 40)])
+        z_line = feat.get("properties", {}).get("elevation")
+        try:
+            z_line = float(z_line) if z_line is not None else z_ref
+        except (TypeError, ValueError):
+            z_line = z_ref
+        candidates.append((dmin, pts, z_line))
+
+    if not candidates:
+        raise ValueError("No hay curvas de nivel aprovechables. Prueba un intervalo más fino.")
+
+    nearby = [c for c in candidates if c[0] <= 350.0]
+    pool = nearby if len(nearby) >= 3 else candidates
+
+    best_pts = None
+    best_score = -1.0
+    for dmin, pts, z_line in pool:
+        samples = pts[:: max(1, len(pts) // 25)]
+        faccs = []
+        for x, y in samples:
+            rr, cc = rowcol(gt, x, y)
+            if 0 <= rr < h and 0 <= cc < w and np.isfinite(acc[rr, cc]):
+                faccs.append(float(acc[rr, cc]) * cell_area)
+        facc_max = max(faccs) if faccs else 0.0
+        radius = _min_radius(pts, dist_m)
+        length = _length_m(pts, dist_m)
+        score_length = min(length / 200.0, 1.0)
+        score_elev = 1.0 / (1.0 + abs(z_line - z_ref))
+        score_near = 1.0 / (1.0 + dmin / 80.0)
+        score_hydro = max(0.0, 1.0 - facc_max / max(threshold_area * 2.0, 1.0))
+        score_radius = 0.5 if radius is None else min(radius / 12.0, 1.0)
+        score = (
+            0.28 * score_length
+            + 0.18 * score_elev
+            + 0.18 * score_near
+            + 0.18 * score_hydro
+            + 0.18 * score_radius
+        )
+        if score > best_score:
+            best_score = score
+            best_pts = pts
+
+    if best_pts is None:
+        raise ValueError("No se encontró línea madre. Prueba otro punto o más curvas.")
+
+    best_pts = _chaikin(best_pts, 1)
+    mother_ll = []
+    if to_wgs is None:
+        mother_ll = [[x, y] for x, y in best_pts]
+    else:
+        for x, y in best_pts:
+            mother_ll.append(list(to_wgs.transform(x, y)))
+
+    mid_lon = float(np.mean([p[0] for p in mother_ll]))
+    mid_lat = float(np.mean([p[1] for p in mother_ll]))
+    epsg = _utm_epsg(mid_lon, mid_lat)
+    to_utm = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True).transform
+    to_wgs84 = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True).transform
+    mother_wgs = LineString([(p[0], p[1]) for p in mother_ll])
+    mother_utm = transform(to_utm, mother_wgs)
+    bounds = dem["wgs_bounds"]
+    clip = box(
+        bounds["left"],
+        bounds["bottom"],
+        bounds["right"],
+        bounds["top"],
+    )
+
+    features = [
+        {
+            "type": "Feature",
+            "properties": {
+                "type": "GuideLine",
+                "index": 0,
+                "offset_m": 0,
+                "role": "mother",
+                "z_ref": round(z_ref, 2),
+            },
+            "geometry": mapping(mother_wgs),
+        }
+    ]
+
+    for i in range(1, num_lines + 1):
+        dist = spacing_m * i
+        for side in ("left", "right"):
+            try:
+                offset_line = mother_utm.parallel_offset(dist, side, join_style=2)
+            except Exception:
+                continue
+            if offset_line.is_empty:
+                continue
+            geoms = (
+                list(offset_line.geoms)
+                if offset_line.geom_type == "MultiLineString"
+                else [offset_line]
+            )
+            for geom in geoms:
+                wgs = transform(to_wgs84, geom)
+                try:
+                    wgs = wgs.intersection(clip)
+                except Exception:
+                    pass
+                if wgs.is_empty:
+                    continue
+                parts = list(wgs.geoms) if wgs.geom_type == "MultiLineString" else [wgs]
+                for part in parts:
+                    if part.is_empty or part.geom_type != "LineString":
+                        continue
+                    features.append(
+                        {
+                            "type": "Feature",
+                            "properties": {
+                                "type": "Keyline",
+                                "index": i,
+                                "side": side,
+                                "offset_m": dist,
+                            },
+                            "geometry": mapping(part),
+                        }
+                    )
+
+    if len(features) < 2:
+        raise ValueError("La línea madre no produjo offsets dentro del DEM.")
+    raw = {"type": "FeatureCollection", "features": features}
+    return diagnose_and_cut_keylines(path, raw, resample_pct, stake_m=stake_m)
