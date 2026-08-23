@@ -280,7 +280,5 @@ ofrecer también el código fuente de esa versión.
 
 ## Créditos
 
-La Escala de Permanencia proviene del trabajo de P. A. Yeomans y de su
-ampliación por Darren J. Doherty y Regrarians. Este proyecto es una
-implementación independiente de código abierto de ese marco conceptual, sin
-relación ni respaldo de Regrarians Ltd.
+Generado con ayuda Cursor <img width="512" height="512" alt="cursor-ai-code-icon" src="https://github.com/user-attachments/assets/fb1a122b-56e9-4f5a-a435-d5c1934b0db2" />
+
