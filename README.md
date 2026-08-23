@@ -239,15 +239,14 @@ registro observado del sitio.
 
 ## Licencia
 
-GNU General Public License v3.0 o posterior. Ver [LICENSE](LICENSE).
+GNU Affero General Public License v3.0. Ver [LICENSE](LICENSE).
 
-Esto significa que puedes usar, estudiar, modificar y redistribuir el programa,
-con la condición de que cualquier versión derivada que distribuyas se publique
-también bajo GPL y con su código fuente disponible.
-
-> Nota: la GPL cubre la *distribución* del programa. Si tu intención es que
-> también quede cubierto el uso a través de la red, sin entregar binarios, la
-> licencia adecuada sería la AGPL-3.0.
+Puedes usar, estudiar, modificar y redistribuir el programa, con la
+condición de que cualquier versión derivada se publique también bajo
+AGPL y con su código fuente disponible. Eso incluye el caso en que se
+ofrezca el programa como servicio en red (un servidor o una instancia
+en la nube): quien lo modifique y lo ponga a disposición de otros debe
+ofrecer también el código fuente de esa versión.
 
 ## Créditos
 
