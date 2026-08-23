@@ -6,11 +6,6 @@ terreno: cuencas y drenaje, presión de agua por gravedad, sitios de embalse,
 keylines, redes de tubería con presupuesto, trazo de caminos de menor costo,
 aptitud de edificación, sombra solar y series climáticas del sitio.
 
-El proyecto sigue la **Escala de Permanencia** de Regrarians (P. A. Yeomans,
-ampliada por Darren J. Doherty), que ordena las decisiones de diseño de la más
-permanente a la más cambiante. Las capas del programa están agrupadas por esos
-diez niveles, y esa es también la secuencia recomendada de trabajo.
-
 > Herramienta de **prefactibilidad**. Los cálculos hidráulicos, de movimiento de
 > tierra y de costos son órdenes de magnitud para comparar alternativas. No
 > sustituyen diseño de ingeniería, estudio de suelos ni levantamiento topográfico
