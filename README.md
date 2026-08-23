@@ -234,7 +234,8 @@ registro observado del sitio.
 - [Manual de uso](docs/MANUAL.md) — cada herramienta, parámetros y cómo leer
   los resultados.
 - [Lanzador de escritorio](docs/LANZADOR.md) — instalación de una sola vez,
-  doble clic diario y fallos frecuentes.
+  ventana de control, diagramas, capturas y el tramo inicial del guion de
+  video. El recorrido de diseño sigue en el flujo de trabajo.
 
 ## Licencia
 

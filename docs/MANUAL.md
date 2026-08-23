@@ -9,8 +9,9 @@ hace falta terminal. Deja abierta la ventana pequeña de control mientras
 trabajas; al terminar, pulsa *Detener y salir*. Si es la primera vez en ese
 equipo, ejecuta antes `scripts\Instalar.cmd`: al terminar abre la aplicación
 sola. Detalle, archivos y
-solución de problemas: [lanzador de escritorio](LANZADOR.md). Recorrido
-visual, decisiones de cada paso y guion de video: [flujo de trabajo](WORKFLOW.md).
+solución de problemas: [lanzador de escritorio](LANZADOR.md) (parte 1 del
+video). Recorrido visual de diseño y parte 2 del guion:
+[flujo de trabajo](WORKFLOW.md).
 
 ---
 

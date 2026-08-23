@@ -4,8 +4,10 @@ Recorrido operativo de PermacultureSoft, en el orden de la Escala de
 Permanencia. Cada escena dice **qué haces**, **qué debes ver** y **qué
 decides**. Al final hay un guion para grabar el mismo recorrido en video.
 
-El detalle de cada parámetro está en el [manual](MANUAL.md). Cómo se abre el
-programa, en el [lanzador](LANZADOR.md).
+El detalle de cada parámetro está en el [manual](MANUAL.md). El video
+**empieza** por la instalación y la ventana de control, en el
+[lanzador](LANZADOR.md#guion-de-video--parte-1-instalación-3-min). Este
+archivo es la parte 2: del mapa en adelante.
 
 > Prefactibilidad. El resultado sirve para descartar alternativas malas y
 > llevar dos o tres opciones a campo. No es diseño de ingeniería ni
@@ -286,32 +288,33 @@ ventana de control a la fuerza: Detener y salir cierra los servidores.»*
 
 ---
 
-## Guion de video (~12 minutos)
+## Guion de video · parte 2 (operación, ~12 min)
 
-Mismo orden. Una toma por escena. Texto en off, sin leer la interfaz en
-voz alta salvo el nombre del botón que se pulsa.
+La **parte 1** (instalación, ventana de control, primer mapa) está en el
+[lanzador](LANZADOR.md#guion-de-video--parte-1-instalación-3-min) y ocupa
+los minutos 0:00–3:00. Aquí el cronómetro **sigue en 3:00**.
+
+Una toma por escena. Texto en off, sin leer la interfaz en voz alta salvo
+el nombre del botón que se pulsa.
 
 | Min | Escena | En pantalla | Off (idea, no texto literal) |
 | --- | --- | --- | --- |
-| 0:00 | Título | Logo / mapa satélite | Qué es: prefactibilidad de finca, no ingenieria |
-| 0:20 | Abrir | Doble clic, ventana de control, navegador | Un clic; no cerrar la ventana chica |
-| 0:50 | Orientación | Plano general como `01-interfaz.png` | Las cuatro zonas |
-| 1:40 | Clima | Panel como `02-clima.png` | Mensual, anual, de dónde sale la lluvia |
-| 3:10 | DEM | Choose file + curvas + perímetro cian | El ráster manda; intervalo según el relieve |
-| 4:20 | Relieve | Slope, Drainage | Qué no se toca y dónde corre el agua |
-| 5:20 | Agua | Cuenca, embalse, presión, un tramo de tubería | Aforo en el cauce; 10 m ≈ 1 bar |
-| 7:20 | Camino | Dos clics, Enter, hover en alcantarilla | Mirar metros fuera de norma |
-| 8:20 | Keyline | Keypoint + dirección | Contorno 1:n conduce agua |
-| 9:10 | Sitios y sol | Buscar sitios + sombra solsticio | Primero plataforma, después sombra |
-| 10:20 | Cierre | Tabla de presupuesto, Exportar JSON, Detener | Comparar, no cotizar; apagar bien |
-| 11:20 | Límites | Campo / DEM de mala calidad (opcional) | Contraste con estación y topografía de detalle |
+| 3:00 | Orientación | Plano general como `01-interfaz.png` | Las cuatro zonas; herramientas grises hasta el DEM |
+| 3:50 | Clima | Panel como `02-clima.png` | Mensual, anual, de dónde sale la lluvia |
+| 5:20 | DEM | Choose file + curvas + perímetro cian | El ráster manda; intervalo según el relieve |
+| 6:30 | Relieve | Slope, Drainage | Qué no se toca y dónde corre el agua |
+| 7:30 | Agua | Cuenca, embalse, presión, un tramo de tubería | Aforo en el cauce; 10 m ≈ 1 bar |
+| 9:30 | Camino | Dos clics, Enter, hover en alcantarilla | Mirar metros fuera de norma |
+| 10:30 | Keyline | Keypoint + dirección | Contorno 1:n conduce agua |
+| 11:20 | Sitios y sol | Buscar sitios + sombra solsticio | Primero plataforma, después sombra |
+| 12:30 | Cierre | Tabla de presupuesto, Exportar JSON, Detener | Comparar, no cotizar; apagar en la ventana de control |
+| 13:30 | Límites | Campo / DEM de mala calidad (opcional) | Contraste con estación y topografía de detalle |
 
-Duración objetivo: 10–12 min. Si se alarga, corta tubería o keyline; no
-cortes clima ni DEM: sin eso el resto no se entiende.
+Duración total con la parte 1: **~15 minutos**. Si se alarga la parte 2,
+corta tubería o keyline; no cortes clima ni DEM.
 
 **Tomas que conviene ensayar.** Clic de cuenca que falle en ladera y se
-corrija sobre *Drainage* (enseña el error típico). Primera carga de clima
-con la espera de CHIRPS, para que no parezca colgado.
+corrija sobre *Drainage*. Primera carga de clima con la espera de CHIRPS.
 
-**Lo que no hace falta en el video.** Arquitectura, Vercel, comandos de
-desarrollo. Eso vive en el README.
+**Lo que no hace falta en esta parte.** Instalación, Python, Node, logs
+del lanzador: eso ya se grabó en la parte 1.
