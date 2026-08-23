@@ -101,60 +101,79 @@ cargar dependencias pesadas en el navegador.
 
 ## Requisitos
 
-- Windows 10 o 11 (el lanzador de escritorio es para Windows)
+- Windows 10 u 11, Linux (con escritorio) o macOS 11+
 - Python 3.11 o superior
 - Node.js 20 o superior
 - Un DEM en GeoTIFF con sistema de coordenadas definido, preferiblemente
   proyectado en metros (CRTM05 / EPSG:5367 en Costa Rica, o el UTM que
   corresponda)
 
+En Linux conviene tener `python3-venv` y `python3-tk` (ventana de control).
+En macOS, si Python viene de Homebrew: `brew install python-tk`. Si `pip`
+no puede instalar `rasterio`, instala GDAL del sistema (`gdal-bin` o
+`brew install gdal`).
+
 ## Instalación
 
-En Windows, lo más simple es clonar o copiar la carpeta y ejecutar **una vez**
-`scripts\Instalar.cmd`. Comprueba Python y Node, crea el entorno, instala
-dependencias, deja un acceso *PermacultureSoft* en el escritorio y abre la
-aplicación. No hace falta un segundo clic.
+Clona o copia la carpeta y ejecuta **una vez** el instalador de tu sistema.
+Comprueba Python y Node, crea el entorno, instala dependencias, deja un
+acceso *PermacultureSoft* en el escritorio y abre la aplicación. No hace
+falta un segundo clic.
 
-```powershell
+| Sistema | Una vez | Cada día |
+| --- | --- | --- |
+| Windows | `scripts\Instalar.cmd` | Acceso del escritorio o `PermacultureSoft.vbs` |
+| Linux | `scripts/install.sh` o doble clic en `scripts/Instalar.desktop` | Acceso del escritorio o `PermacultureSoft.desktop` |
+| macOS | doble clic en `scripts/Instalar.command` | Acceso del escritorio o `PermacultureSoft.command` |
+
+```bash
 git clone https://github.com/asoto59g/PermacultureSoft.git
 cd PermacultureSoft
+```
+
+```powershell
+# Windows
 .\scripts\Instalar.cmd
+```
+
+```bash
+# Linux / macOS
+chmod +x scripts/install.sh   # solo si el clon quito el permiso
+./scripts/install.sh
 ```
 
 A mano, el equivalente es:
 
-```powershell
+```bash
 # Backend
 cd backend
-python -m venv venv
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
+python3 -m venv venv
+./venv/bin/python -m pip install -r requirements.txt   # Windows: venv\Scripts\python.exe
 cd ..
 
 # Frontend
 cd frontend
 npm install
-cp .env.example .env.local
+cp .env.example .env.local   # Windows: copy
 cd ..
 ```
 
-En Linux o macOS el venv se activa con `source backend/venv/bin/activate` y los
-ejecutables viven en `backend/venv/bin/`. Ahí no hay lanzador de escritorio:
-se usa `start-dev.ps1` o los dos servidores por separado.
-
 ## Uso diario (sin terminal)
 
-Doble clic en el acceso del escritorio, o en `PermacultureSoft.vbs` dentro de
-la carpeta del proyecto. Aparece una ventana pequeña; cuando los servidores
-responden se abre el navegador (Edge en modo aplicación, o el predeterminado).
+Doble clic en el acceso del escritorio (o en `PermacultureSoft.vbs` /
+`.desktop` / `.command` de la carpeta del proyecto). Aparece una ventana
+pequeña; cuando los servidores responden se abre el navegador (Chrome o
+Edge en modo aplicación, o el predeterminado).
 
 Mientras esa ventana esté abierta, la aplicación vive. **Detener y salir**
-apaga los dos servidores. Si ya estaba corriendo, un segundo doble clic sólo
-abre otra ventana del mapa.
+apaga los dos servidores. Si ya estaba corriendo, un segundo doble clic
+sólo abre otra ventana del mapa.
 
-Si algo falla, el detalle queda en `logs\`. Tras `git pull`, vuelve a ejecutar
-`scripts\Instalar.cmd` para recompilar la interfaz.
+Si algo falla, el detalle queda en `logs/`. Tras `git pull`, vuelve a
+ejecutar el instalador para recompilar la interfaz.
 
-Para recrear el acceso del escritorio: `scripts\CrearAccesoEscritorio.cmd`.
+Para recrear el acceso del escritorio: `scripts\CrearAccesoEscritorio.cmd`
+(Windows) o `scripts/crear-acceso.sh` (Linux / macOS).
 
 ## Ejecución en desarrollo
 
@@ -167,7 +186,7 @@ El script levanta FastAPI en `http://127.0.0.1:8000` y Next.js en
 en dos terminales:
 
 ```powershell
-# Terminal 1
+# Terminal 1 (en Linux/macOS: backend/venv/bin/uvicorn)
 cd backend
 .\venv\Scripts\uvicorn.exe main:app --host 127.0.0.1 --port 8000 --reload
 

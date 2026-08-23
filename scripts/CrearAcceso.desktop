@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Crear acceso PermacultureSoft
+Comment=Recrea el icono del escritorio
+Terminal=true
+Exec=bash -c 'f="$0"; f="${f#file://}"; f="${f#file:}"; DIR="$(dirname "$f")"; cd "$DIR" && ./crear-acceso.sh; echo; echo "Pulsa Enter para cerrar."; read -r _' %k
+Icon=preferences-desktop
+Categories=Utility;

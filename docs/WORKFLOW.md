@@ -51,9 +51,11 @@ Necesitas un **DEM GeoTIFF** de la finca:
 Sin DEM se puede consultar el clima del centro del mapa. Todo lo demás
 (curvas, cuenca, camino, keyline, sitios) permanece gris.
 
-En un equipo nuevo: un clic en `scripts\Instalar.cmd`. Después, el acceso
-**PermacultureSoft** del escritorio. Deja abierta la ventana pequeña de
-control; **Detener y salir** apaga los servidores.
+En un equipo nuevo: un clic en el instalador (`scripts\Instalar.cmd` en
+Windows, `scripts/install.sh` o `Instalar.command` / `Instalar.desktop` en
+macOS y Linux). Después, el acceso **PermacultureSoft** del escritorio.
+Deja abierta la ventana pequeña de control; **Detener y salir** apaga los
+servidores.
 
 ---
 

@@ -5,6 +5,14 @@
 # Los scripts de PowerShell necesitan CRLF en Windows.
 *.ps1 text eol=crlf
 
+# Scripts Unix: el shebang se rompe si Git los convierte a CRLF en Windows.
+scripts/*.sh             text eol=lf
+scripts/*.command        text eol=lf
+scripts/*.py             text eol=lf
+scripts/*.desktop        text eol=lf
+*.desktop                text eol=lf
+PermacultureSoft.command text eol=lf
+
 # Binarios: que git no intente convertir nada.
 *.png binary
 *.ico binary

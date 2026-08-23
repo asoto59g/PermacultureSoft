@@ -3,15 +3,16 @@
 Guía práctica de PermacultureSoft. Para instalación y arquitectura, ver el
 [README](../README.md).
 
-**Abrir la aplicación.** En Windows, doble clic en el acceso *PermacultureSoft*
-del escritorio (o en `PermacultureSoft.vbs` de la carpeta del proyecto). No
-hace falta terminal. Deja abierta la ventana pequeña de control mientras
-trabajas; al terminar, pulsa *Detener y salir*. Si es la primera vez en ese
-equipo, ejecuta antes `scripts\Instalar.cmd`: al terminar abre la aplicación
-sola. Detalle, archivos y
-solución de problemas: [lanzador de escritorio](LANZADOR.md) (parte 1 del
-video). Recorrido visual de diseño y parte 2 del guion:
-[flujo de trabajo](WORKFLOW.md).
+**Abrir la aplicación.** Doble clic en el acceso *PermacultureSoft* del
+escritorio (o, en la carpeta del proyecto, `PermacultureSoft.vbs` en
+Windows, `PermacultureSoft.desktop` en Linux, `PermacultureSoft.command` en
+macOS). No hace falta terminal. Deja abierta la ventana pequeña de control
+mientras trabajas; al terminar, pulsa *Detener y salir*. Si es la primera
+vez en ese equipo, ejecuta antes el instalador (`scripts\Instalar.cmd`,
+`scripts/install.sh` o `scripts/Instalar.command`): al terminar abre la
+aplicación sola. Detalle, archivos y solución de problemas: [lanzador de
+escritorio](LANZADOR.md) (parte 1 del video). Recorrido visual de diseño y
+parte 2 del guion: [flujo de trabajo](WORKFLOW.md).
 
 ---
 

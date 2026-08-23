@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Instalar PermacultureSoft
+Comment=Instala dependencias, compila y abre PermacultureSoft
+Terminal=true
+Exec=bash -c 'f="$0"; f="${f#file://}"; f="${f#file:}"; DIR="$(dirname "$f")"; cd "$DIR" && ./install.sh; st=$?; echo; if [ "$st" -ne 0 ]; then echo "La instalacion no termino. Pulsa Enter."; read -r _; exit "$st"; fi; echo "Ya puedes cerrar esta terminal."' %k
+Icon=system-software-install
+Categories=Development;
+StartupNotify=true

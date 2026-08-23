@@ -46,6 +46,9 @@ Thumbs.db
 # Arranque local: bitácoras del lanzador de escritorio.
 logs/
 
+# .app generado por scripts/install.sh (lleva la ruta absoluta de esta copia).
+PermacultureSoft.app/
+
 # Archivos de sondeo desechables
 _*.py
 _*.ps1

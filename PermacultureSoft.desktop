@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=PermacultureSoft
+Comment=Diseño de paisaje en permacultura
+Terminal=false
+Exec=bash -c 'f="$0"; f="${f#file://}"; f="${f#file:}"; DIR="$(dirname "$f")"; exec "$DIR/scripts/launcher.sh"' %k
+Icon=applications-science
+Categories=Science;Education;Geography;
+StartupNotify=false

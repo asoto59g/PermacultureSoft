@@ -1,6 +1,8 @@
 # Lanzador de escritorio
 
-Cómo se instala y se abre PermacultureSoft en Windows, **sin terminal**.
+Cómo se instala y se abre PermacultureSoft **sin terminal**. En Windows el
+video usa `Instalar.cmd` y `PermacultureSoft.vbs`; en Linux y macOS el
+flujo es el mismo con `install.sh` y el acceso del escritorio.
 Esta es la parte 1 del video: del doble clic hasta que el mapa está listo.
 La parte 2 —clima, DEM y diseño— sigue en el [flujo de trabajo](WORKFLOW.md).
 
@@ -14,17 +16,17 @@ plano.
 
 ```mermaid
 flowchart LR
-  A[Equipo nuevo] --> B["scripts\\Instalar.cmd"]
+  A[Equipo nuevo] --> B[Instalador]
   B --> C[Ventana de control]
   C --> D[Navegador en :3000]
   E[Dia a dia] --> F[Acceso del escritorio]
   F --> C
 ```
 
-| Momento | Qué pulsas | Qué ocurre |
-| --- | --- | --- |
-| **Una vez** (o tras `git pull`) | `scripts\Instalar.cmd` | Instala, compila, crea el icono **y abre la aplicación** |
-| **Cada día** | Acceso *PermacultureSoft* del escritorio | Solo arranca; no vuelve a instalar |
+| Momento | Windows | Linux | macOS |
+| --- | --- | --- | --- |
+| **Una vez** (o tras `git pull`) | `scripts\Instalar.cmd` | `scripts/install.sh` o `Instalar.desktop` | `scripts/Instalar.command` |
+| **Cada día** | Acceso del escritorio o `PermacultureSoft.vbs` | Acceso del escritorio o `PermacultureSoft.desktop` | Acceso del escritorio o `PermacultureSoft.command` |
 
 No hace falta pulsar dos archivos el primer día: el instalador lanza solo
 el mapa al terminar.
@@ -37,7 +39,9 @@ el mapa al terminar.
 
 | Entrada | Para qué |
 | --- | --- |
-| `PermacultureSoft.vbs` | Doble clic de diario si no usas el icono del escritorio |
+| `PermacultureSoft.vbs` | Windows: doble clic de diario si no usas el icono del escritorio |
+| `PermacultureSoft.desktop` | Linux: lo mismo |
+| `PermacultureSoft.command` | macOS: lo mismo (el instalador también deja un `.app` en el escritorio) |
 | `scripts\` | Instalador y lógica del lanzador |
 | `backend\` | API Python (DEM, agua, caminos…) |
 | `frontend\` | Interfaz Next.js |
@@ -215,7 +219,7 @@ Si falla algo, el detalle queda en `logs\`:
 ```mermaid
 flowchart TD
   S[No abre / no carga] --> A{Hay ventana de control?}
-  A -->|no| B[Falta instalacion: Instalar.cmd]
+  A -->|no| B[Falta instalacion]
   A -->|si, Preparando| C[logs/launcher.log]
   A -->|si, Lista| D{El navegador carga?}
   D -->|no| E[Abrir, o logs/frontend.log]
@@ -224,7 +228,8 @@ flowchart TD
 ```
 
 **«Falta la instalación».** No está el `venv` o no está `node_modules`.
-`scripts\Instalar.cmd`.
+El instalador de tu sistema (`Instalar.cmd`, `install.sh` o
+`Instalar.command`).
 
 **El puerto 3000 u 8000 está ocupado.** Quedó otra copia (o `start-dev.ps1`).
 *Detener y salir* en la ventana vieja, o cierra esa consola, y reintenta.
@@ -233,13 +238,55 @@ flowchart TD
 `logs\launcher.log`. El lanzador ya fuerza `127.0.0.1` y un proxy vacío.
 
 **Se ve una versión vieja tras `git pull`.** El lanzador diario no recompila.
-Otra vez `Instalar.cmd`.
+Otra vez el instalador (`Instalar.cmd`, `install.sh` o `Instalar.command`).
 
 **Error de PROJ al arrancar.** Una `PROJ_LIB` de PostGIS tapa la de rasterio.
 `backend/projfix.py` lo corrige solo; si persiste, borra `PROJ_LIB` y
 `PROJ_DATA` del entorno.
 
-**Linux / macOS.** No hay lanzador de escritorio. Ver [README](../README.md).
+**Linux / macOS.** El instalador es `scripts/install.sh` (en macOS,
+doble clic en `scripts/Instalar.command`). Si `pip` falla con rasterio,
+instala GDAL del sistema. Si no aparece la ventana de control, instala
+`python3-tk` (Linux) o `brew install python-tk` (macOS); el lanzador
+cae entonces a un diálogo de Zenity o de AppleScript.
+
+**El `.desktop` de Linux pide «Permitir lanzar».** Es normal la primera
+vez: clic derecho → *Allow Launching* / *Permitir iniciar*.
+
+**macOS avisa que el desarrollador no está identificado.** Clic derecho
+→ *Abrir* la primera vez. El `.app` del escritorio lo genera el
+instalador en esta máquina; no viene firmado por Apple.
+
+---
+
+## Linux y macOS (mismo flujo, otros archivos)
+
+```mermaid
+flowchart TD
+  P{Python 3.11+ ?} -->|no| P1[python.org, apt, dnf o brew]
+  N{Node 20+ ?} -->|no| N1[nodejs.org o nvm]
+  P -->|si| N
+  P1 --> N
+  N -->|si| C[Clonar o copiar la carpeta]
+  N1 --> C
+  C --> I["scripts/install.sh  o  Instalar.command"]
+  I --> D[Acceso en el escritorio]
+  D --> V[Ventana de control]
+  V --> B[Navegador en :3000]
+```
+
+| Sistema | Una vez | Recrear icono | Diario en la carpeta |
+| --- | --- | --- | --- |
+| Linux | `scripts/Instalar.desktop` o `./scripts/install.sh` | `scripts/crear-acceso.sh` | `PermacultureSoft.desktop` |
+| macOS | `scripts/Instalar.command` | `scripts/CrearAcceso.command` | `PermacultureSoft.command` |
+
+El instalador deja el acceso en el escritorio que reporte `xdg-user-dir
+DESKTOP` (o `~/Escritorio`), y en Linux también en el menú de
+aplicaciones (`~/.local/share/applications`). En macOS crea
+`PermacultureSoft.app` en el escritorio y otra copia junto al proyecto.
+
+Los logs son los mismos (`logs/launcher.log`, `backend.log`,
+`frontend.log`). 127.0.0.1 y proxy vacío, igual que en Windows.
 
 ---
 
