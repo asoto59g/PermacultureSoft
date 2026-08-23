@@ -280,5 +280,5 @@ ofrecer también el código fuente de esa versión.
 
 ## Créditos
 
-Generado con ayuda Cursor <img width="12" height="12" alt="cursor-ai-code-icon" src="https://github.com/user-attachments/assets/fb1a122b-56e9-4f5a-a435-d5c1934b0db2" />
+Generado con ayuda Cursor <img width="20" height="20" alt="cursor-ai-code-icon" src="https://github.com/user-attachments/assets/fb1a122b-56e9-4f5a-a435-d5c1934b0db2" />
 
