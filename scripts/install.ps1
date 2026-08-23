@@ -65,6 +65,15 @@ function Find-Npm($nodeExe) {
   return $null
 }
 
+function Start-App {
+  $vbs = Join-Path $Root 'PermacultureSoft.vbs'
+  if (-not (Test-Path $vbs)) {
+    Write-Host "    No se encontro PermacultureSoft.vbs; no se puede abrir la aplicacion." -ForegroundColor Yellow
+    return
+  }
+  Start-Process -FilePath 'wscript.exe' -ArgumentList "`"$vbs`""
+}
+
 function New-DesktopShortcut {
   $desktop = [Environment]::GetFolderPath('Desktop')
   if (-not $desktop) { return $null }
@@ -164,6 +173,8 @@ if ($lnk) {
   Write-Host "    No se pudo crear. Usa PermacultureSoft.vbs en la carpeta del proyecto."
 }
 
+Write-Step "Abriendo PermacultureSoft"
+Start-App
 Write-Host ""
-Write-Host "Listo. Cierra esta ventana y abre PermacultureSoft con doble clic." -ForegroundColor Green
-Write-Host "La primera vez compilara la interfaz; las siguientes arrancan en segundos."
+Write-Host "Listo. Se abre la ventana de control y, en unos segundos, el navegador." -ForegroundColor Green
+Write-Host "Para el dia a dia usa el acceso del escritorio; no hace falta volver a instalar."

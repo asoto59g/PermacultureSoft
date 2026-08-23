@@ -7,7 +7,8 @@ Guía práctica de PermacultureSoft. Para instalación y arquitectura, ver el
 del escritorio (o en `PermacultureSoft.vbs` de la carpeta del proyecto). No
 hace falta terminal. Deja abierta la ventana pequeña de control mientras
 trabajas; al terminar, pulsa *Detener y salir*. Si es la primera vez en ese
-equipo, ejecuta antes `scripts\Instalar.cmd`. Detalle, archivos y
+equipo, ejecuta antes `scripts\Instalar.cmd`: al terminar abre la aplicación
+sola. Detalle, archivos y
 solución de problemas: [lanzador de escritorio](LANZADOR.md).
 
 ---

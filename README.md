@@ -112,7 +112,8 @@ cargar dependencias pesadas en el navegador.
 
 En Windows, lo más simple es clonar o copiar la carpeta y ejecutar **una vez**
 `scripts\Instalar.cmd`. Comprueba Python y Node, crea el entorno, instala
-dependencias y deja un acceso *PermacultureSoft* en el escritorio.
+dependencias, deja un acceso *PermacultureSoft* en el escritorio y abre la
+aplicación. No hace falta un segundo clic.
 
 ```powershell
 git clone https://github.com/asoto59g/PermacultureSoft.git

@@ -16,12 +16,14 @@ en segundo plano.
 2. Clona o copia esta carpeta.
 3. Ejecuta `scripts\Instalar.cmd`.
 
-Eso crea el entorno de Python, instala dependencias, compila la interfaz y
-deja un acceso **PermacultureSoft** en el escritorio.
+Eso crea el entorno de Python, instala dependencias, compila la interfaz,
+deja un acceso **PermacultureSoft** en el escritorio y **abre la aplicación**
+(ventana de control y navegador). No hace falta un segundo clic.
 
 Para sólo recrear el icono: `scripts\CrearAccesoEscritorio.cmd`.
 
-Tras un `git pull`, vuelve a ejecutar `Instalar.cmd` para recompilar.
+Tras un `git pull`, vuelve a ejecutar `Instalar.cmd` para recompilar; al
+terminar vuelve a abrir la aplicación.
 
 ---
 
@@ -45,7 +47,7 @@ Si ya estaba corriendo, un segundo doble clic sólo abre otra ventana del mapa.
 | --- | --- |
 | `PermacultureSoft.vbs` | Punto de doble clic. Arranca PowerShell oculto. |
 | `scripts\launcher.ps1` | Ventana de control, arranque y apagado de FastAPI y Next.js. |
-| `scripts\Instalar.cmd` | Instalación de una sola vez (consola visible a propósito). |
+| `scripts\Instalar.cmd` | Instalación de una sola vez; al terminar abre la aplicación. |
 | `scripts\install.ps1` | Lógica del instalador y del acceso de escritorio. |
 | `scripts\CrearAccesoEscritorio.cmd` | Sólo regenera el `.lnk` del escritorio. |
 | `logs\` | Bitácoras (`launcher.log`, `backend.log`, `frontend.log`). No se versionan. |
