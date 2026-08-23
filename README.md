@@ -229,13 +229,12 @@ registro observado del sitio.
 
 ## Documentación
 
-El [manual de uso](docs/MANUAL.md) recorre el flujo completo de trabajo,
-herramienta por herramienta, con los parámetros de cada una y cómo leer los
-resultados.
-
-El [lanzador de escritorio](docs/LANZADOR.md) explica la instalación de una
-sola vez, el doble clic diario, los archivos que intervienen y qué hacer si
-algo falla.
+- [Flujo de trabajo](docs/WORKFLOW.md) — recorrido operativo con capturas, qué
+  decidir en cada paso y un guion para grabar el mismo recorrido en video.
+- [Manual de uso](docs/MANUAL.md) — cada herramienta, parámetros y cómo leer
+  los resultados.
+- [Lanzador de escritorio](docs/LANZADOR.md) — instalación de una sola vez,
+  doble clic diario y fallos frecuentes.
 
 ## Licencia
 
