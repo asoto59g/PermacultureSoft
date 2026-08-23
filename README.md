@@ -1,4 +1,6 @@
-# PermacultureSoft
+#<p align="center">
+  <img src="./assets/permaculturesoft.png" alt="PermacultureSoft">
+</p>
 
 SIG web para diseño de paisaje en permacultura. Se sube un modelo digital de
 elevación (DEM) de la finca y la plataforma deriva de él todo lo que depende del
