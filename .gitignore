@@ -1,0 +1,49 @@
+# --- Python / backend ---
+backend/venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# DEM subidos por el usuario: son datos del cliente, no del proyecto.
+backend/uploads/
+
+# --- Node / frontend ---
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-error.log*
+
+# --- Entorno y despliegue ---
+.env
+.env.local
+.env*.local
+.vercel
+
+# --- Datos pesados y material de referencia ---
+# Rásters de trabajo. Si quieres publicar un DEM de ejemplo, ponlo en samples/
+# y quítalo de aquí de forma explícita.
+*.tif
+*.tiff
+
+# Capturas de R.EARTH usadas como referencia de diseño. Son software de
+# terceros; no se redistribuyen.
+regrariansoftware*.png
+
+# --- Editor y sistema ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Archivos de sondeo desechables
+_*.py
+_*.ps1
+_*.txt

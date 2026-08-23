@@ -1,0 +1,12 @@
+# Normaliza a LF en el repositorio. Cada quien ve en su copia lo que su
+# sistema use; el historial no se llena de cambios de fin de línea.
+* text=auto eol=lf
+
+# Los scripts de PowerShell necesitan CRLF en Windows.
+*.ps1 text eol=crlf
+
+# Binarios: que git no intente convertir nada.
+*.png binary
+*.ico binary
+*.tif binary
+*.tiff binary
