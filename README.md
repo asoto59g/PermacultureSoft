@@ -2,6 +2,14 @@
   <img src="./assets/permaculturesoft.png" alt="PermacultureSoft">
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.4.0-blue" alt="Version">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-green" alt="License"></a>
+  <img src="https://img.shields.io/badge/Python-3.11%2B-yellow" alt="Python">
+  <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey" alt="Platform">
+</p>
+
 SIG web para diseño de paisaje en permacultura. Se sube un modelo digital de
 elevación (DEM) de la finca y la plataforma deriva de él todo lo que depende del
 terreno: cuencas y drenaje, presión de agua por gravedad, sitios de embalse,
