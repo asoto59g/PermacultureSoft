@@ -3,6 +3,13 @@
 Guía práctica de PermacultureSoft. Para instalación y arquitectura, ver el
 [README](../README.md).
 
+**Abrir la aplicación.** En Windows, doble clic en el acceso *PermacultureSoft*
+del escritorio (o en `PermacultureSoft.vbs` de la carpeta del proyecto). No
+hace falta terminal. Deja abierta la ventana pequeña de control mientras
+trabajas; al terminar, pulsa *Detener y salir*. Si es la primera vez en ese
+equipo, ejecuta antes `scripts\Instalar.cmd`. Detalle, archivos y
+solución de problemas: [lanzador de escritorio](LANZADOR.md).
+
 ---
 
 ## 1. Antes de empezar: el DEM
@@ -99,10 +106,14 @@ fecha llega; después de ella la serie del año en curso usa ERA5 y el pronósti
 
 ### 3.2 · Geografía
 
-**Cargar el DEM.** Ajusta primero *Intervalo curvas* (por defecto 5 m) y pulsa
-**Importar**. Al terminar aparecen tres capas bajo `2-GEOGRAPHY`: la superficie
-del DEM, el **límite del DEM** (el polígono envolvente, en cian) y las curvas de
-nivel. La cámara se centra sola en la finca.
+**Cargar el DEM.** Ajusta *Intervalo curvas* (0.25, 0.50, 0.75 m y luego de 1
+a 10 m) y pulsa **Importar**. Si el DEM ya está cargado, mover el deslizador
+regenera las curvas sin volver a subir el archivo. Al terminar aparecen tres
+capas bajo `2-GEOGRAPHY`: la superficie del DEM, el **límite del DEM** (el
+polígono envolvente, en cian) y las curvas de nivel. La cámara se centra sola
+en la finca. En intervalos sub-métricos las curvas enteras se dibujan más
+gruesas y las intermedias más finas. Si el desnivel del DEM no cabe en el
+techo de curvas, la barra de estado avisa el intervalo realmente dibujado.
 
 El polígono envolvente no es decorativo: es el área sobre la que se promedia la
 lluvia de CHIRPS. Al pasar el cursor por encima informa la superficie en
@@ -304,9 +315,12 @@ necesita levantamiento de campo, ensayos de suelo e ingeniería de detalle.
 
 ## 8. Problemas frecuentes
 
-**«No hay conexión con el API».** El backend no está corriendo. Arráncalo con
-`.\start-dev.ps1` o, por separado, `cd backend` y
-`.\venv\Scripts\uvicorn.exe main:app --host 127.0.0.1 --port 8000`.
+**«No hay conexión con el API».** El backend no está corriendo. Si abriste la
+aplicación con el acceso del escritorio, cierra la ventana de control y vuelve
+a hacer doble clic. En desarrollo, arranca con `.\start-dev.ps1` o, por
+separado, `cd backend` y
+`.\venv\Scripts\uvicorn.exe main:app --host 127.0.0.1 --port 8000`. El detalle
+del lanzador queda en `logs\backend.log`.
 
 **Las herramientas de la barra están grises.** Falta cargar un DEM. Sólo
 *Seleccionar*, las de dibujo y *Medir* funcionan sin él.

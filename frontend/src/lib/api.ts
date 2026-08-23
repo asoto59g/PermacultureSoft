@@ -30,6 +30,26 @@ async function readError(response: Response): Promise<string> {
   return `HTTP ${response.status}`;
 }
 
+export async function rebuildContours(
+  demId: string,
+  interval: number
+): Promise<{
+  interval: number;
+  interval_effective: number;
+  levels_requested: number;
+  levels_drawn: number;
+  contours_generated: number;
+  geojson: FeatureCollection;
+}> {
+  const response = await apiFetch("/api/geography/contours/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dem_id: demId, interval }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
 export async function uploadDem(file: File, interval: number): Promise<UploadDemResponse> {
   const formData = new FormData();
   formData.append("file", file);

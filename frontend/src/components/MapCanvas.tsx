@@ -120,16 +120,18 @@ export function MapCanvas({
             filled: false,
             lineWidthMinPixels: 1,
             parameters: { depthTest: false },
-            getLineColor: (f: { properties?: { elevation?: number } }) =>
+            getLineColor: (f: { properties?: { elevation?: number; major?: boolean } }) =>
               elevationColor(
                 f.properties?.elevation ?? elevMin,
                 elevMin,
                 elevMax,
-                opacity
+                f.properties?.major === false ? Math.round(opacity * 0.7) : opacity
               ),
-            getLineWidth: 1,
+            getLineWidth: (f: { properties?: { major?: boolean } }) =>
+              f.properties?.major === false ? 0.7 : 1.4,
             updateTriggers: {
               getLineColor: [elevMin, elevMax, opacity],
+              getLineWidth: [opacity],
             },
           })
         );
@@ -343,7 +345,9 @@ export function MapCanvas({
           ?.properties;
         const elev = props?.elevation;
         if (typeof elev === "number") {
-          onHoverFeature(`Curva ${elev.toFixed(1)} m`);
+          onHoverFeature(
+            `Curva ${Number.isInteger(elev) ? elev.toFixed(0) : elev.toFixed(2)} m`
+          );
         } else if (props?.kind === "building-site") {
           onHoverFeature(
             `Sitio #${props.rank} · ${props.slope_pct}% · ${props.aspect} · ${props.pad_ha} ha`

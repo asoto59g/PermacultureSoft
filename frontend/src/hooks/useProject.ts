@@ -11,6 +11,7 @@ import {
   fetchSolarMap,
   fetchSurfaceMap,
   generateKeyline,
+  rebuildContours,
   sampleElevation,
   uploadDem,
   type SurfaceMapType,
@@ -113,6 +114,7 @@ type Action =
   | { type: "SET_DRAFT"; draft: Draft }
   | { type: "SET_MEASURE_LIVE"; live: State["measureLive"] }
   | { type: "LOAD_DEM"; dem: DemInfo; contours: FeatureCollection }
+  | { type: "SET_CONTOURS"; dem: DemInfo; contours: FeatureCollection }
   | { type: "PUSH_LAYER"; layer: LayerNode }
   | { type: "TOGGLE_LAYER"; id: string }
   | { type: "SET_OPACITY"; id: string; opacity: number }
@@ -277,6 +279,35 @@ function reducer(state: State, action: Action): State {
           : `DEM cargado · ${action.contours.features.length} curvas a ${fmtInterval(drawn)} m`,
       };
     }
+    case "SET_CONTOURS": {
+      const drawn = action.dem.intervalEffective ?? action.dem.interval;
+      const thinned = drawn > action.dem.interval * 1.001;
+      const contourLayer: LayerNode = {
+        id: "contours",
+        name: `Curvas ${fmtInterval(drawn)} m`,
+        category: "geography",
+        kind: "contours",
+        visible: true,
+        opacity: 0.85,
+        data: action.contours,
+        meta: {
+          elevMin: action.dem.elevationMin,
+          elevMax: action.dem.elevationMax,
+        },
+      };
+      const hasContours = state.layers.some((l) => l.kind === "contours");
+      return {
+        ...state,
+        dem: action.dem,
+        layers: hasContours
+          ? state.layers.map((l) => (l.kind === "contours" ? contourLayer : l))
+          : [...state.layers, contourLayer],
+        statusMessage: thinned
+          ? `${action.contours.features.length} curvas · ` +
+            `el desnivel no admite ${fmtInterval(action.dem.interval)} m, se dibujaron a ${fmtInterval(drawn)} m`
+          : `${action.contours.features.length} curvas a ${fmtInterval(drawn)} m`,
+      };
+    }
     case "PUSH_LAYER":
       return pushHistory(state, [...state.layers, action.layer]);
     case "TOGGLE_LAYER":
@@ -431,6 +462,9 @@ const initialState: State = {
 export function useProject() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const elevTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const demRef = useRef(state.dem);
+  demRef.current = state.dem;
 
   const handleUpload = useCallback(
     async (file: File) => {
@@ -462,6 +496,34 @@ export function useProject() {
     },
     [state.contourInterval]
   );
+
+  const applyContourInterval = useCallback((interval: number) => {
+    dispatch({ type: "SET_INTERVAL", interval });
+    if (intervalTimer.current) clearTimeout(intervalTimer.current);
+    if (!demRef.current) return;
+    intervalTimer.current = setTimeout(async () => {
+      const dem = demRef.current;
+      if (!dem) return;
+      dispatch({ type: "SET_LOADING", loading: true });
+      try {
+        const data = await rebuildContours(dem.demId, interval);
+        dispatch({
+          type: "SET_CONTOURS",
+          dem: {
+            ...dem,
+            interval: data.interval,
+            intervalEffective: data.interval_effective,
+          },
+          contours: data.geojson,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error al regenerar curvas";
+        dispatch({ type: "SET_ERROR", error: message });
+      } finally {
+        dispatch({ type: "SET_LOADING", loading: false });
+      }
+    }, 400);
+  }, []);
 
   const onPointerMove = useCallback(
     (lon: number, lat: number) => {
@@ -1175,6 +1237,7 @@ export function useProject() {
     state,
     dispatch,
     handleUpload,
+    applyContourInterval,
     handleMapClick,
     onPointerMove,
     finishDraft,

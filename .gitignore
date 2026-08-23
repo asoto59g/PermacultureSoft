@@ -43,6 +43,9 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Arranque local: bitácoras del lanzador de escritorio.
+logs/
+
 # Archivos de sondeo desechables
 _*.py
 _*.ps1

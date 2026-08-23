@@ -101,6 +101,7 @@ cargar dependencias pesadas en el navegador.
 
 ## Requisitos
 
+- Windows 10 o 11 (el lanzador de escritorio es para Windows)
 - Python 3.11 o superior
 - Node.js 20 o superior
 - Un DEM en GeoTIFF con sistema de coordenadas definido, preferiblemente
@@ -109,10 +110,19 @@ cargar dependencias pesadas en el navegador.
 
 ## Instalación
 
+En Windows, lo más simple es clonar o copiar la carpeta y ejecutar **una vez**
+`scripts\Instalar.cmd`. Comprueba Python y Node, crea el entorno, instala
+dependencias y deja un acceso *PermacultureSoft* en el escritorio.
+
 ```powershell
 git clone https://github.com/asoto59g/PermacultureSoft.git
 cd PermacultureSoft
+.\scripts\Instalar.cmd
+```
 
+A mano, el equivalente es:
+
+```powershell
 # Backend
 cd backend
 python -m venv venv
@@ -127,16 +137,33 @@ cd ..
 ```
 
 En Linux o macOS el venv se activa con `source backend/venv/bin/activate` y los
-ejecutables viven en `backend/venv/bin/`.
+ejecutables viven en `backend/venv/bin/`. Ahí no hay lanzador de escritorio:
+se usa `start-dev.ps1` o los dos servidores por separado.
 
-## Ejecución
+## Uso diario (sin terminal)
+
+Doble clic en el acceso del escritorio, o en `PermacultureSoft.vbs` dentro de
+la carpeta del proyecto. Aparece una ventana pequeña; cuando los servidores
+responden se abre el navegador (Edge en modo aplicación, o el predeterminado).
+
+Mientras esa ventana esté abierta, la aplicación vive. **Detener y salir**
+apaga los dos servidores. Si ya estaba corriendo, un segundo doble clic sólo
+abre otra ventana del mapa.
+
+Si algo falla, el detalle queda en `logs\`. Tras `git pull`, vuelve a ejecutar
+`scripts\Instalar.cmd` para recompilar la interfaz.
+
+Para recrear el acceso del escritorio: `scripts\CrearAccesoEscritorio.cmd`.
+
+## Ejecución en desarrollo
 
 ```powershell
 .\start-dev.ps1
 ```
 
 El script levanta FastAPI en `http://127.0.0.1:8000` y Next.js en
-`http://localhost:3000`. Para arrancarlos por separado, en dos terminales:
+`http://localhost:3000` con recarga automática. Para arrancarlos por separado,
+en dos terminales:
 
 ```powershell
 # Terminal 1
@@ -148,8 +175,10 @@ cd frontend
 npm run dev
 ```
 
-Next.js redirige `/api/*` al backend, así que el navegador sólo habla con el
-puerto 3000.
+Next.js redirige `/api/*` (salvo clima) al backend, así que el navegador sólo
+habla con el puerto 3000. El lanzador de escritorio usa la misma convención,
+pero sirve la interfaz compilada (`next start`) en lugar del servidor de
+desarrollo.
 
 ### Si el backend falla con un error de PROJ
 
@@ -202,6 +231,10 @@ registro observado del sitio.
 El [manual de uso](docs/MANUAL.md) recorre el flujo completo de trabajo,
 herramienta por herramienta, con los parámetros de cada una y cómo leer los
 resultados.
+
+El [lanzador de escritorio](docs/LANZADOR.md) explica la instalación de una
+sola vez, el doble clic diario, los archivos que intervienen y qué hacer si
+algo falla.
 
 ## Licencia
 

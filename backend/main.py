@@ -14,12 +14,10 @@ import rasterio  # noqa: E402
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
-from rasterio.transform import xy  # noqa: E402
-from shapely.geometry import LineString, mapping  # noqa: E402
-from skimage import measure  # noqa: E402
 
 from access import design_road  # noqa: E402
 from buildings import building_suitability  # noqa: E402
+from contours import elevation_contours  # noqa: E402
 from crsutil import transformer_from_wgs84, transformer_to_wgs84  # noqa: E402
 from ecosystems import generate_contour_keylines, generate_keyline_pattern  # noqa: E402
 from footprint import dem_footprint  # noqa: E402
@@ -52,10 +50,6 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
-
-# Techo de curvas por DEM. Por encima, el intervalo se ralea y se avisa.
-MAX_CONTOUR_LEVELS = 400
-
 
 def _safe_stem(filename: str | None) -> str:
     raw = Path(filename or "dem").stem
@@ -131,49 +125,17 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             if nodata is not None:
                 elevation = np.where(elevation == nodata, np.nan, elevation)
 
-            min_elev = float(np.nanmin(elevation))
-            max_elev = float(np.nanmax(elevation))
-            min_level = np.ceil(min_elev / interval) * interval
-            max_level = np.floor(max_elev / interval) * interval
-            levels = np.arange(min_level, max_level + interval, interval)
-
-            # Un intervalo fino sobre mucho desnivel pide miles de curvas y el
-            # GeoJSON se vuelve inmanejable. Se ralea, pero se informa: entregar
-            # otro intervalo sin decirlo haría mentir a la escala del control.
-            requested = len(levels)
-            stride = 1
-            if requested > MAX_CONTOUR_LEVELS:
-                stride = int(np.ceil(requested / MAX_CONTOUR_LEVELS))
-                levels = levels[::stride]
-            interval_effective = interval * stride
-
-            features = []
-            for level in levels:
-                contours = measure.find_contours(elevation, level)
-                for contour in contours:
-                    if len(contour) > 400:
-                        contour = contour[:: max(2, len(contour) // 200)]
-                    coords = [xy(transform, row, col) for row, col in contour]
-                    if len(coords) >= 2:
-                        features.append(
-                            {
-                                "type": "Feature",
-                                "properties": {"elevation": float(level)},
-                                "geometry": mapping(LineString(coords)),
-                            }
-                        )
+            geojson, contour_meta = elevation_contours(
+                elevation, transform, dataset.crs, interval
+            )
+            min_elev = contour_meta["elevation_min"]
+            max_elev = contour_meta["elevation_max"]
+            interval_effective = contour_meta["interval_effective"]
+            requested = contour_meta["levels_requested"]
+            levels_drawn = contour_meta["levels_drawn"]
 
             left, bottom, right, top = bounds.left, bounds.bottom, bounds.right, bounds.top
-            geojson = {"type": "FeatureCollection", "features": features}
-
             to_wgs = transformer_to_wgs84(dataset.crs)
-            if to_wgs is not None and features:
-                for feature in features:
-                    coords = feature["geometry"]["coordinates"]
-                    xs, ys = zip(*coords)
-                    nx, ny = to_wgs.transform(xs, ys)
-                    feature["geometry"]["coordinates"] = list(zip(nx, ny))
-                geojson = {"type": "FeatureCollection", "features": features}
 
             if to_wgs is not None:
                 left, top = to_wgs.transform(bounds.left, bounds.top)
@@ -201,10 +163,10 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             "interval": interval,
             "interval_effective": round(float(interval_effective), 3),
             "levels_requested": requested,
-            "levels_drawn": len(levels),
+            "levels_drawn": levels_drawn,
             "bounds": {"left": left, "bottom": bottom, "right": right, "top": top},
             "footprint": footprint,
-            "contours_generated": len(features),
+            "contours_generated": len(geojson["features"]),
             "geojson": geojson,
         }
     except HTTPException:
@@ -215,6 +177,40 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
         if file_path.exists():
             file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Error processing GeoTIFF: {exc}") from exc
+
+
+class ContourRequest(BaseModel):
+    dem_id: str
+    interval: float = Field(gt=0, le=50)
+
+
+@app.post("/api/geography/contours")
+@app.post("/api/geography/contours/")
+async def rebuild_contours(req: ContourRequest):
+    """Regenera curvas del DEM ya cargado, sin volver a subir el archivo."""
+    path = _dem_path(req.dem_id)
+    try:
+        with rasterio.open(path) as dataset:
+            elevation = dataset.read(1).astype("float64")
+            if dataset.nodata is not None:
+                elevation = np.where(elevation == dataset.nodata, np.nan, elevation)
+            geojson, meta = elevation_contours(
+                elevation, dataset.transform, dataset.crs, req.interval
+            )
+        return {
+            "status": "success",
+            "dem_id": req.dem_id,
+            "interval": req.interval,
+            "interval_effective": round(float(meta["interval_effective"]), 3),
+            "levels_requested": meta["levels_requested"],
+            "levels_drawn": meta["levels_drawn"],
+            "contours_generated": len(geojson["features"]),
+            "geojson": geojson,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Error generating contours: {exc}") from exc
 
 
 class ElevationRequest(BaseModel):

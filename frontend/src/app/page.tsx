@@ -40,6 +40,7 @@ export default function Home() {
     state,
     dispatch,
     handleUpload,
+    applyContourInterval,
     handleMapClick,
     onPointerMove,
     finishDraft,
@@ -128,7 +129,7 @@ export default function Home() {
           pipes={pipes}
           roads={roads}
           boq={boq}
-          onInterval={(v) => dispatch({ type: "SET_INTERVAL", interval: v })}
+          onInterval={applyContourInterval}
           onKeylineOffset={(v) =>
             dispatch({ type: "SET_KEYLINE_OFFSET", offset: v })
           }
