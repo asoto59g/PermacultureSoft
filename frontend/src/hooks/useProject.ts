@@ -212,9 +212,11 @@ function reducer(state: State, action: Action): State {
     case "SET_MEASURE_LIVE":
       return { ...state, measureLive: action.live };
     case "LOAD_DEM": {
+      const drawn = action.dem.intervalEffective ?? action.dem.interval;
+      const thinned = drawn > action.dem.interval * 1.001;
       const contourLayer: LayerNode = {
         id: "contours",
-        name: `Contours ${action.dem.interval} m`,
+        name: `Curvas ${fmtInterval(drawn)} m`,
         category: "geography",
         kind: "contours",
         visible: true,
@@ -269,7 +271,10 @@ function reducer(state: State, action: Action): State {
         past: [],
         future: [],
         error: null,
-        statusMessage: `DEM cargado · ${action.contours.features.length} curvas`,
+        statusMessage: thinned
+          ? `DEM cargado · ${action.contours.features.length} curvas · ` +
+            `el desnivel no admite ${fmtInterval(action.dem.interval)} m, se dibujaron a ${fmtInterval(drawn)} m`
+          : `DEM cargado · ${action.contours.features.length} curvas a ${fmtInterval(drawn)} m`,
       };
     }
     case "PUSH_LAYER":
@@ -351,6 +356,10 @@ function reducer(state: State, action: Action): State {
     default:
       return state;
   }
+}
+
+function fmtInterval(value: number): string {
+  return value < 1 ? value.toFixed(2) : String(Math.round(value * 100) / 100);
 }
 
 function toolHint(tool: ToolId): string | null {
@@ -437,6 +446,7 @@ export function useProject() {
           elevationMin: data.elevation_min,
           elevationMax: data.elevation_max,
           interval: data.interval,
+          intervalEffective: data.interval_effective ?? data.interval,
           bounds: data.bounds,
           footprint: data.footprint ?? null,
         };

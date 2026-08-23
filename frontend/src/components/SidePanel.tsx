@@ -37,6 +37,24 @@ type Props = {
 
 const DN = [32, 40, 50, 63, 75, 90, 110, 160, 200];
 
+/** Sub-métrico para terreno plano, luego de metro en metro. */
+const CONTOUR_INTERVALS = [0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+function formatInterval(value: number): string {
+  return value < 1 ? value.toFixed(2) : String(value);
+}
+
+/** Un proyecto guardado puede traer un intervalo fuera de la escala; se ajusta al más cercano. */
+function intervalIndex(value: number): number {
+  let best = 0;
+  for (let i = 1; i < CONTOUR_INTERVALS.length; i += 1) {
+    if (Math.abs(CONTOUR_INTERVALS[i] - value) < Math.abs(CONTOUR_INTERVALS[best] - value)) {
+      best = i;
+    }
+  }
+  return best;
+}
+
 export function SidePanel({
   dem,
   contourInterval,
@@ -147,17 +165,22 @@ export function SidePanel({
       <label className="block">
         <span className="mb-1 flex justify-between text-[10px] uppercase tracking-wide text-zinc-500">
           <span>Intervalo curvas</span>
-          <span className="text-zinc-300">{contourInterval} m</span>
+          <span className="text-zinc-300">{formatInterval(contourInterval)} m</span>
         </span>
         <input
           type="range"
-          min={1}
-          max={50}
+          min={0}
+          max={CONTOUR_INTERVALS.length - 1}
           step={1}
-          value={contourInterval}
-          onChange={(e) => onInterval(Number(e.target.value))}
+          value={intervalIndex(contourInterval)}
+          onChange={(e) => onInterval(CONTOUR_INTERVALS[Number(e.target.value)])}
           className="w-full accent-emerald-500"
         />
+        <span className="flex justify-between text-[9px] text-zinc-600">
+          <span>0.25</span>
+          <span>1</span>
+          <span>10 m</span>
+        </span>
       </label>
 
       <div className="rounded border border-zinc-800 p-2">

@@ -67,6 +67,8 @@ export interface DemInfo {
   elevationMin: number;
   elevationMax: number;
   interval: number;
+  /** Difiere de interval cuando el desnivel obligó a ralear las curvas. */
+  intervalEffective?: number;
   bounds: { left: number; bottom: number; right: number; top: number };
   footprint?: DemFootprint | null;
 }
@@ -163,6 +165,10 @@ export interface UploadDemResponse {
   elevation_min: number;
   elevation_max: number;
   interval: number;
+  /** Intervalo realmente dibujado; mayor que el pedido si hubo que ralear. */
+  interval_effective: number;
+  levels_requested: number;
+  levels_drawn: number;
   bounds: { left: number; bottom: number; right: number; top: number };
   footprint: DemFootprint | null;
   contours_generated: number;

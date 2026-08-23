@@ -53,6 +53,9 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
+# Techo de curvas por DEM. Por encima, el intervalo se ralea y se avisa.
+MAX_CONTOUR_LEVELS = 400
+
 
 def _safe_stem(filename: str | None) -> str:
     raw = Path(filename or "dem").stem
@@ -133,9 +136,16 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             min_level = np.ceil(min_elev / interval) * interval
             max_level = np.floor(max_elev / interval) * interval
             levels = np.arange(min_level, max_level + interval, interval)
-            if len(levels) > 50:
-                stride = int(np.ceil(len(levels) / 50))
+
+            # Un intervalo fino sobre mucho desnivel pide miles de curvas y el
+            # GeoJSON se vuelve inmanejable. Se ralea, pero se informa: entregar
+            # otro intervalo sin decirlo haría mentir a la escala del control.
+            requested = len(levels)
+            stride = 1
+            if requested > MAX_CONTOUR_LEVELS:
+                stride = int(np.ceil(requested / MAX_CONTOUR_LEVELS))
                 levels = levels[::stride]
+            interval_effective = interval * stride
 
             features = []
             for level in levels:
@@ -189,6 +199,9 @@ async def upload_dem(file: UploadFile = File(...), interval: float = Form(5.0)):
             "elevation_min": min_elev,
             "elevation_max": max_elev,
             "interval": interval,
+            "interval_effective": round(float(interval_effective), 3),
+            "levels_requested": requested,
+            "levels_drawn": len(levels),
             "bounds": {"left": left, "bottom": bottom, "right": right, "top": top},
             "footprint": footprint,
             "contours_generated": len(features),
