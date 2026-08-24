@@ -89,6 +89,10 @@ con el PATH marcado. Node LTS. La carpeta del proyecto. Nada más.»*
 Doble clic en **`Instalar`**. Se abre una consola a propósito: bajar
 dependencias tarda y conviene ver el avance.
 
+Si la carpeta está en OneDrive, usa **`InstalarLimpio.cmd`** en lugar de
+`Instalar.cmd`: clona en `%USERPROFILE%\PermacultureSoft` y instala ahí.
+npm en OneDrive suele fallar con `EPERM`.
+
 Lo que hace, en orden:
 
 ```mermaid
