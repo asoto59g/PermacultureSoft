@@ -1,7 +1,10 @@
-<img src="video.gif" alt="Video demostrativo" width="800">
 <p align="center">
-  <img src="./assets/permaculturesoft.png" alt="PermacultureSoft">
+  <a href="https://github.com/asoto59g/PermacultureSoft">
+    <img src="permaculturesoft.png" alt="PermacultureSoft" width="640">
+  </a>
 </p>
+
+<img src="video.gif" alt="Video demostrativo" width="800">
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.4.0-blue" alt="Version">
