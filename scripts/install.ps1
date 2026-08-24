@@ -167,10 +167,22 @@ if (-not (Test-Path $envFile) -and (Test-Path $envExample)) {
 
 Push-Location $Frontend
 try {
+  # Un omit=optional viejo (npmrc de usuario o sesion) deja sin binario a Tailwind.
+  Remove-Item Env:NPM_CONFIG_OMIT -ErrorAction SilentlyContinue
   # cmd.exe hereda mal el PATH de PowerShell; se fuerza en la misma linea.
   $npmLine = "set `"PATH=$nodeDir;%PATH%`" && `"$npmCmd`" "
   cmd.exe /c ($npmLine + "install --no-fund --no-audit")
   if ($LASTEXITCODE -ne 0) { Fail "Fallo npm install." }
+
+  cmd.exe /c "set `"PATH=$nodeDir;%PATH%`" && `"$nodeExe`" -e `"require('lightningcss')`""
+  if ($LASTEXITCODE -ne 0) {
+    $arch = (& $nodeExe -p "process.arch").Trim()
+    $native = "lightningcss-win32-$arch-msvc"
+    Write-Host "    Falta el binario CSS ($native). Instalando..."
+    cmd.exe /c ($npmLine + "install $native --no-save --no-fund --no-audit")
+    if ($LASTEXITCODE -ne 0) { Fail "Fallo la instalacion de $native (necesario para Tailwind)." }
+  }
+
   Write-Host "    Compilando la interfaz (un minuto la primera vez)..."
   cmd.exe /c ($npmLine + "run build")
   if ($LASTEXITCODE -ne 0) { Fail "Fallo la compilacion (npm run build)." }
