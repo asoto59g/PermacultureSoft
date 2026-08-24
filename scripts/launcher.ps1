@@ -291,7 +291,7 @@ $form.Add_Shown({
     } else {
       if (Test-BuildStale) {
         Set-Status "Compilando la aplicacion. La primera vez tarda cerca de un minuto..."
-        $build = Start-Silent $script:NodeExe """$NextBin"" build" $Frontend 'build'
+        $build = Start-Silent $script:NodeExe """$NextBin"" build --webpack" $Frontend 'build'
         Wait-Exit $build
         if ($build.ExitCode -ne 0) {
           $bar.Style = 'Continuous'

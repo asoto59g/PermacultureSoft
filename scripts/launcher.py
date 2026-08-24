@@ -257,7 +257,7 @@ def start_servers(status) -> None:
     else:
         if build_stale():
             status("Compilando la aplicacion. La primera vez tarda cerca de un minuto...")
-            build = start_silent(node, [str(NEXT_BIN), "build"], FRONTEND, "build")
+            build = start_silent(node, [str(NEXT_BIN), "build", "--webpack"], FRONTEND, "build")
             build.wait()
             if build.returncode != 0:
                 raise LaunchError("Fallo la compilacion.\nRevisa logs/build.log.")
