@@ -51,6 +51,8 @@ export default function Home() {
     rebuildActiveOverlay,
     runSolar,
     runBuildingSites,
+    connectSiteRoads,
+    siteCount,
     saveProject,
     loadProject,
     pipes,
@@ -230,6 +232,13 @@ export default function Home() {
             onSiteSlope={(v) => dispatch({ type: "SET_SITE_SLOPE", slope: v })}
             onSitePad={(v) => dispatch({ type: "SET_SITE_PAD", pad: v })}
             onSitesRebuild={runBuildingSites}
+            roadMaxGradePct={state.roadMaxGradePct}
+            roadWidthM={state.roadWidthM}
+            onRoadGrade={(v) => dispatch({ type: "SET_ROAD_GRADE", grade: v })}
+            onRoadWidth={(v) => dispatch({ type: "SET_ROAD_WIDTH", width: v })}
+            onRoadTool={() => dispatch({ type: "SET_TOOL", tool: "road" })}
+            onConnectSites={connectSiteRoads}
+            siteCount={siteCount}
           />
         </div>
 

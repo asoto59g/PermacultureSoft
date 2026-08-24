@@ -32,6 +32,13 @@ type Props = {
   onSiteSlope: (v: number) => void;
   onSitePad: (v: number) => void;
   onSitesRebuild: () => void;
+  roadMaxGradePct: number;
+  roadWidthM: number;
+  onRoadGrade: (v: number) => void;
+  onRoadWidth: (v: number) => void;
+  onRoadTool: () => void;
+  onConnectSites: () => void;
+  siteCount: number;
 };
 
 const MAPS: { id: SurfaceMapType; label: string }[] = [
@@ -72,6 +79,13 @@ export function AnalysisPanel({
   onSiteSlope,
   onSitePad,
   onSitesRebuild,
+  roadMaxGradePct,
+  roadWidthM,
+  onRoadGrade,
+  onRoadWidth,
+  onRoadTool,
+  onConnectSites,
+  siteCount,
 }: Props) {
   const stem = (legendTitle || "analisis").replace(/\s+/g, "_");
 
@@ -305,6 +319,67 @@ export function AnalysisPanel({
           className="w-full rounded bg-teal-800 px-2 py-1.5 text-[11px] text-white hover:bg-teal-700 disabled:opacity-40"
         >
           Buscar sitios
+        </button>
+      </div>
+
+      <div className="mb-3 border-t border-zinc-800 pt-3">
+        <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
+          Acceso · caminos
+        </p>
+        <label className="mb-2 block">
+          <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
+            <span>Pendiente máx.</span>
+            <span>{roadMaxGradePct} %</span>
+          </span>
+          <input
+            type="range"
+            min={4}
+            max={45}
+            step={1}
+            value={roadMaxGradePct}
+            onChange={(e) => onRoadGrade(Number(e.target.value))}
+            className="w-full accent-orange-400"
+          />
+        </label>
+        <label className="mb-2 block">
+          <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
+            <span>Ancho</span>
+            <span>{roadWidthM.toFixed(1)} m</span>
+          </span>
+          <input
+            type="range"
+            min={2}
+            max={8}
+            step={0.5}
+            value={roadWidthM}
+            onChange={(e) => onRoadWidth(Number(e.target.value))}
+            className="w-full accent-orange-400"
+          />
+        </label>
+        <p className="mb-2 text-[11px] leading-snug text-zinc-400">
+          El trazo es de menor costo: origen y destino (o más puntos) y Enter.
+        </p>
+        <button
+          type="button"
+          disabled={!hasDem || loading}
+          onClick={onRoadTool}
+          className="mb-1 w-full rounded bg-orange-800 px-2 py-1.5 text-[11px] text-white hover:bg-orange-700 disabled:opacity-40"
+        >
+          Trazar camino
+        </button>
+        <button
+          type="button"
+          disabled={!hasDem || loading || siteCount < 2}
+          onClick={onConnectSites}
+          title={
+            siteCount < 2
+              ? "Primero Buscar sitios (hacen falta al menos dos)"
+              : `Rutas de menor costo desde el sitio #1 a ${Math.min(siteCount - 1, 5)} candidato(s)`
+          }
+          className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[11px] text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+        >
+          Caminos entre sitios
+          {siteCount >= 2 ? ` (${Math.min(siteCount - 1, 5)})` : ""}
         </button>
       </div>
 

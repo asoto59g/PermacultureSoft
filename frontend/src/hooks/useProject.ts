@@ -713,6 +713,80 @@ export function useProject() {
     ]
   );
 
+  const connectSiteRoads = useCallback(async () => {
+    if (!state.dem) return;
+    const points = sitePointsFromLayers(state.layers);
+    if (points.length < 2) {
+      dispatch({
+        type: "SET_ERROR",
+        error: "Primero pulsa Buscar sitios: hacen falta al menos dos candidatos.",
+      });
+      return;
+    }
+    dispatch({ type: "SET_LOADING", loading: true });
+    dispatch({ type: "SET_ERROR", error: null });
+    const hub = points[0];
+    const spokes = points.slice(1, 6);
+    let ok = 0;
+    try {
+      for (const dest of spokes) {
+        const result = await designRoad(
+          state.dem.demId,
+          [hub, dest],
+          state.roadMaxGradePct,
+          state.roadWidthM,
+          state.resamplePct,
+          state.gaussianSigma
+        );
+        const road: RoadFeature = {
+          id: newId("road"),
+          waypoints: result.waypoints,
+          geojson: result.geojson,
+          lengthM: result.length_3d_m,
+          widthM: result.width_m,
+          maxGradePct: result.max_grade_found_pct,
+          meanGradePct: result.mean_grade_pct,
+          overGradeM: result.over_grade_length_m,
+          cutFillM3: result.cut_fill_m3,
+          culverts: result.culverts,
+          boq: result.boq,
+          costRefUsd: result.cost_ref_usd,
+        };
+        dispatch({
+          type: "PUSH_LAYER",
+          layer: {
+            id: road.id,
+            name: `Acceso sitio · ${road.lengthM.toFixed(0)} m · máx ${road.maxGradePct}%`,
+            category: "access",
+            kind: "road",
+            visible: true,
+            opacity: 1,
+            data: road,
+          },
+        });
+        ok += 1;
+      }
+      dispatch({
+        type: "SET_STATUS",
+        message: `${ok} camino(s) desde el sitio #1 hacia los demás candidatos`,
+      });
+    } catch (err) {
+      dispatch({
+        type: "SET_ERROR",
+        error: err instanceof Error ? err.message : "Error al sugerir caminos",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", loading: false });
+    }
+  }, [
+    state.dem,
+    state.layers,
+    state.roadMaxGradePct,
+    state.roadWidthM,
+    state.resamplePct,
+    state.gaussianSigma,
+  ]);
+
   const handleMapClick = useCallback(
     async (lon: number, lat: number, isDouble = false) => {
       const tool = state.activeTool;
@@ -1267,6 +1341,8 @@ export function useProject() {
     rebuildActiveOverlay,
     runSolar,
     runBuildingSites,
+    connectSiteRoads,
+    siteCount: sitePointsFromLayers(state.layers).length,
     saveProject,
     loadProject,
     pipes,
@@ -1278,6 +1354,24 @@ export function useProject() {
 }
 
 export type ProjectApi = ReturnType<typeof useProject>;
+
+function sitePointsFromLayers(layers: LayerNode[]): number[][] {
+  const layer = layers.find((l) => l.id === "building-candidates");
+  const raw = layer?.data as
+    | {
+        features?: {
+          properties?: { rank?: number };
+          geometry?: { coordinates?: number[] };
+        }[];
+      }
+    | undefined;
+  return (raw?.features ?? [])
+    .slice()
+    .sort((a, b) => Number(a.properties?.rank ?? 99) - Number(b.properties?.rank ?? 99))
+    .map((f) => f.geometry?.coordinates)
+    .filter((c): c is number[] => Array.isArray(c) && c.length >= 2)
+    .map((c) => [Number(c[0]), Number(c[1])]);
+}
 
 function applyOverlay(
   id: string,

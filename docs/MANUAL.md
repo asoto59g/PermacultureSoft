@@ -189,9 +189,14 @@ disponible, sube un diámetro antes que aceptar el resultado.
 ### 3.4 · Acceso
 
 Fija *Pendiente máx.* (12 % por defecto, máximo 45) y *Ancho de calzada*
-(4 m por defecto). Activa la herramienta **Camino**, haz click en el origen y el
-destino —o en varios puntos intermedios si quieres forzar el paso por un
-lugar— y pulsa Enter.
+(4 m por defecto) en el panel izquierdo o en el derecho, sección *Acceso*.
+**Trazar camino** (derecha) o la herramienta **Camino** de la barra: click en el
+origen y el destino —o en varios puntos intermedios si quieres forzar el paso
+por un lugar— y pulsa Enter.
+
+**Caminos entre sitios** (panel derecho) sugiere rutas de menor costo desde el
+sitio candidato #1 hacia los demás (hasta cinco). Hay que haber pulsado antes
+*Buscar sitios*.
 
 El algoritmo busca la ruta de menor costo entre esos puntos: penaliza la
 pendiente de forma cuadrática, castiga con fuerza los tramos que exceden la
