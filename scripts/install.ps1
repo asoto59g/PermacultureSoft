@@ -46,14 +46,17 @@ function Find-Python {
 }
 
 function Find-Node {
-  $cmd = Get-Command node -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
   foreach ($path in @(
       "$env:ProgramFiles\nodejs\node.exe",
-      "${env:ProgramFiles(x86)}\nodejs\node.exe"
+      "${env:ProgramFiles(x86)}\nodejs\node.exe",
+      "C:\nvm4w\nodejs\node.exe",
+      (Join-Path $env:APPDATA 'nvm\nodejs\node.exe'),
+      (Join-Path $env:LOCALAPPDATA 'fnm_multishells\node.exe')
     )) {
-    if (Test-Path $path) { return $path }
+    if ($path -and (Test-Path $path)) { return $path }
   }
+  $cmd = Get-Command node -ErrorAction SilentlyContinue
+  if ($cmd -and $cmd.Source -notmatch 'WindowsApps') { return $cmd.Source }
   return $null
 }
 
@@ -164,10 +167,12 @@ if (-not (Test-Path $envFile) -and (Test-Path $envExample)) {
 
 Push-Location $Frontend
 try {
-  & $npmCmd install
+  # cmd.exe hereda mal el PATH de PowerShell; se fuerza en la misma linea.
+  $npmLine = "set `"PATH=$nodeDir;%PATH%`" && `"$npmCmd`" "
+  cmd.exe /c ($npmLine + "install --no-fund --no-audit")
   if ($LASTEXITCODE -ne 0) { Fail "Fallo npm install." }
   Write-Host "    Compilando la interfaz (un minuto la primera vez)..."
-  & $npmCmd run build
+  cmd.exe /c ($npmLine + "run build")
   if ($LASTEXITCODE -ne 0) { Fail "Fallo la compilacion (npm run build)." }
 } finally {
   Pop-Location
