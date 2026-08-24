@@ -58,10 +58,10 @@ function Find-Node {
 }
 
 function Find-Npm($nodeExe) {
-  $cmd = Get-Command npm -ErrorAction SilentlyContinue
-  if ($cmd) { return $cmd.Source }
   $sibling = Join-Path (Split-Path $nodeExe) 'npm.cmd'
   if (Test-Path $sibling) { return $sibling }
+  $cmd = Get-Command npm -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
   return $null
 }
 
@@ -124,6 +124,16 @@ if ([int]$Matches[1] -lt 20) { Fail "Node $nodeVer es demasiado viejo. Hace falt
 $npmCmd = Find-Npm $nodeExe
 if (-not $npmCmd) { Fail "Node esta instalado pero no se encontro npm." }
 Write-Host "    npm  ($npmCmd)"
+
+# npm.cmd lanza "node" por PATH. Si Node esta en Program Files pero la
+# sesion no lo heredo (instalacion reciente, o Find-Node lo hallo por ruta),
+# los postinstall fallan con "node no se reconoce".
+$nodeDir = Split-Path $nodeExe
+$env:PATH = "$nodeDir;$env:PATH"
+
+if ($Root -match 'OneDrive') {
+  Write-Host "    Aviso: el proyecto esta en OneDrive. Si npm falla con EPERM, pausa la sincronizacion y borra frontend\node_modules." -ForegroundColor Yellow
+}
 
 # ------------------------------------------------------------------ backend
 
