@@ -18,7 +18,8 @@ SIG web para diseño de paisaje en permacultura. Se sube un modelo digital de
 elevación (DEM) de la finca y la plataforma deriva de él todo lo que depende del
 terreno: cuencas y drenaje, presión de agua por gravedad, sitios de embalse,
 keylines, redes de tubería con presupuesto, trazo de caminos de menor costo,
-aptitud de edificación, sombra solar y series climáticas del sitio.
+aptitud de edificación, cercas vivas, mapas de suelo, sombra solar y series
+climáticas del sitio.
 
 > Herramienta de **prefactibilidad**. Los cálculos hidráulicos, de movimiento de
 > tierra y de costos son órdenes de magnitud para comparar alternativas. No
@@ -37,9 +38,9 @@ aptitud de edificación, sombra solar y series climáticas del sitio.
 | 4 · Acceso | Trazo de camino de menor costo con control de pendiente máxima, perfil longitudinal, movimiento de tierra, alcantarillas y presupuesto |
 | 5 · Ecosistemas | Keylines en tres modos (contorno 1:n, offset, línea madre), diagnóstico ICL, corte en drenajes y puntos de replanteo |
 | 6 · Edificaciones | Aptitud de plataforma según pendiente, sequedad, posición relativa, orientación solar y superficie disponible, con sitios candidatos ordenados |
-| 7 · Cercas | Pendiente |
-| 8 · Suelos | Pendiente |
-| 9 · Economía | Presupuesto agregado de tubería y caminos |
+| 7 · Cercas | Cerca viva: trazo, especies (madero negro, poró, leucaena…), plantas a espaciamiento y BoQ de estacas |
+| 8 · Suelos | Mapas de textura, pH, materia orgánica y agua disponible (SoilGrids 250 m, mismas reglas que CLIMCOW) |
+| 9 · Economía | Presupuesto agregado de tubería, caminos y cercas vivas, precios unitarios editables, USD/ha y export CSV |
 | 10 · Energía | Mapa de sombra e insolación por día y hora |
 
 ### Detalle de los módulos
@@ -75,6 +76,23 @@ replanteo cada N metros con cota del DEM. Detalle de uso: [manual § 3.5](docs/M
 flujo concentrado (0,20), posición relativa en la ladera (0,15), orientación
 solar hacia el ecuador (0,15) y fracción de plataforma construible (0,15).
 
+**Cercas vivas.** Se traza una polilínea (o el perímetro del DEM) y se plantan
+estacas a espaciamiento. Catálogo de referencia tropical: madero negro, poró,
+leucaena, indio desnudo, bambú y mixto multi-estrato. Reporta metros 2D/3D,
+pendiente a lo largo del trazo, tramos > 35 % (rojos) y cantidad de plantas.
+Los precios son de orden de magnitud, no cotización ni receta de vivero.
+
+**Suelos.** Overlay de textura (arenoso / franco / arcilloso), pH, materia
+orgánica y agua disponible en los 50 cm superiores, con el perfil medio de la
+finca. Los rásters salen de **SoilGrids 250 m** (ISRIC); las reglas de textura,
+MO = C × 1,724 y AWC con 500 mm de raíz son las de CLIMCOW
+(`modules/04_suelos`). Un predio pequeño cae en 1–4 celdas: no sustituye
+calicata ni laboratorio.
+
+**Economía.** El BoQ agrupa tubería, caminos y cercas. Los precios unitarios se
+pueden editar y se guardan con el proyecto; el total y el USD/ha salen al vuelo.
+**Exportar CSV** baja la tabla. Sigue siendo orden de magnitud, no cotización.
+
 ---
 
 ## Arquitectura
@@ -92,6 +110,8 @@ PermacultureSoft/
 │   ├── keyline_diag.py ICL, corte en drenajes, replanteo
 │   ├── pipes.py        hidráulica y presupuesto
 │   ├── solar.py        posición solar y sombra
+│   ├── soils.py        textura, pH, MO y AWC (SoilGrids / CLIMCOW)
+│   ├── fences.py       cercas vivas, plantas y BoQ de estacas
 │   ├── crsutil.py      normalización de sistemas de coordenadas
 │   └── projfix.py      aísla la base PROJ del venv de instalaciones del sistema
 └── frontend/           Next.js 16 + React 19 + MapLibre + deck.gl
@@ -121,7 +141,8 @@ cargar dependencias pesadas en el navegador.
 - Node.js 20 o superior
 - Un DEM en GeoTIFF con sistema de coordenadas definido, preferiblemente
   proyectado en metros (CRTM05 / EPSG:5367 en Costa Rica, o el UTM que
-  corresponda)
+  corresponda). Sin DEM propio: `samples/valle_ejemplo.tif` (valle sintético
+  1,5 km, 10 m).
 
 En Linux conviene tener `python3-venv` y `python3-tk` (ventana de control).
 En macOS, si Python viene de Homebrew: `brew install python-tk`. Si `pip`

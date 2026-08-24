@@ -8,7 +8,8 @@ export type ToolId =
   | "pipe"
   | "keyline"
   | "road"
-  | "pressure-field";
+  | "pressure-field"
+  | "fence";
 
 export type BasemapId = "positron" | "dark" | "satellite" | "topo";
 
@@ -33,6 +34,7 @@ export type LayerKind =
   | "keyline"
   | "road"
   | "sites"
+  | "fence"
   | "draw"
   | "measure"
   | "surface"
@@ -112,8 +114,32 @@ export interface RoadFeature {
   maxGradePct: number;
   meanGradePct: number;
   overGradeM: number;
+  limitGradePct?: number;
   cutFillM3: number;
   culverts: number;
+  boq?: BoqLine[];
+  costRefUsd?: number;
+}
+
+export type FencePurpose = "lindero" | "potrero" | "cortavientos" | "multifuncional";
+
+export interface FenceFeature {
+  id: string;
+  vertices: number[][];
+  geojson: FeatureCollection;
+  species: string;
+  speciesName: string;
+  purpose: FencePurpose;
+  spacingM: number;
+  rows: number;
+  lengthM: number;
+  length3dM: number;
+  plantCount: number;
+  meanGradePct: number;
+  maxGradePct: number;
+  steepLengthM: number;
+  steepLimitPct: number;
+  notes?: string;
   boq?: BoqLine[];
   costRefUsd?: number;
 }
@@ -147,6 +173,21 @@ export interface LegendItem {
   area_ha?: number;
 }
 
+export interface SoilProfile {
+  clay_pct: number | null;
+  sand_pct: number | null;
+  silt_pct: number | null;
+  om_pct: number | null;
+  soc_pct: number | null;
+  ph: number | null;
+  field_capacity_pct: number | null;
+  wilting_point_pct: number | null;
+  awc_mm: number | null;
+  texture: string;
+  root_depth_mm: number;
+  source: string;
+}
+
 export interface RasterOverlay {
   imagePngBase64: string;
   bounds: { left: number; bottom: number; right: number; top: number };
@@ -154,6 +195,8 @@ export interface RasterOverlay {
   source?: { lon: number; lat: number; elevation: number };
   geotiffB64?: string | null;
   geojson?: FeatureCollection | null;
+  profile?: SoilProfile | null;
+  notes?: string | null;
 }
 
 export interface UploadDemResponse {

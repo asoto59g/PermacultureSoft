@@ -1,4 +1,4 @@
-import type { FeatureCollection, UploadDemResponse } from "./types";
+import type { FeatureCollection, SoilProfile, UploadDemResponse } from "./types";
 
 /** Same-origin via Next rewrite → FastAPI. */
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -266,6 +266,56 @@ export async function designRoad(
   return response.json();
 }
 
+export interface LivingFenceResult {
+  species: string;
+  species_name: string;
+  purpose: string;
+  spacing_m: number;
+  rows: number;
+  vertices: number[][];
+  length_2d_m: number;
+  length_3d_m: number;
+  mean_grade_pct: number;
+  max_grade_pct: number;
+  steep_length_m: number;
+  steep_limit_pct: number;
+  plant_count: number;
+  boq: {
+    item: string;
+    qty: number;
+    unit: string;
+    unit_price: number;
+    total: number;
+  }[];
+  cost_ref_usd: number;
+  notes: string;
+  geojson: FeatureCollection;
+}
+
+export async function designLivingFence(
+  demId: string,
+  vertices: number[][],
+  species: string,
+  spacingM: number,
+  rows: number,
+  purpose: string
+): Promise<LivingFenceResult> {
+  const response = await apiFetch("/api/fences/living/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dem_id: demId,
+      vertices,
+      species,
+      spacing_m: spacingM,
+      rows,
+      purpose,
+    }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
 export async function fetchBuildingSites(
   demId: string,
   maxSlopePct: number,
@@ -320,6 +370,8 @@ export type SurfaceMapType =
   | "drainage"
   | "wetness";
 
+export type SoilMapType = "texture" | "ph" | "om" | "awc";
+
 export interface OverlayResponse {
   image_png_base64: string;
   bounds: { left: number; bottom: number; right: number; top: number };
@@ -327,6 +379,26 @@ export interface OverlayResponse {
   source?: { lon: number; lat: number; elevation: number };
   geotiff_b64?: string | null;
   geojson?: FeatureCollection | null;
+  profile?: SoilProfile | null;
+  notes?: string | null;
+}
+
+export async function fetchSoilMap(
+  demId: string,
+  mapType: SoilMapType,
+  resamplePct: number
+): Promise<OverlayResponse> {
+  const response = await apiFetch("/api/soils/map/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dem_id: demId,
+      map_type: mapType,
+      resample_pct: resamplePct,
+    }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
 }
 
 export async function fetchSurfaceMap(

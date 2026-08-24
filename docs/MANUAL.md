@@ -24,6 +24,7 @@ resultado no supera la del DEM que se cargue.
 **Formato.** GeoTIFF (`.tif` / `.tiff`), una banda, con sistema de coordenadas
 definido. Se acepta lon/lat (EPSG:4326), pero conviene un sistema **proyectado
 en metros**: CRTM05 (EPSG:5367) en Costa Rica, o el huso UTM que corresponda.
+Sin DEM del cliente, importa `samples/valle_ejemplo.tif` (valle sintético).
 En grados, el tamaño de celda no es uniforme y las pendientes salen sesgadas.
 
 **Resolución.** Entre 1 y 10 m por celda es el rango útil para diseño de finca.
@@ -44,8 +45,8 @@ recortarlos al área de interés antes de cargarlos.
 
 La pantalla tiene cuatro zonas:
 
-- **Panel izquierdo.** Carga del DEM, parámetros de keyline, tubería y camino,
-  guardado del proyecto, y el botón *Clima del sitio*. Abajo, el árbol de capas
+- **Panel izquierdo.** Carga del DEM, parámetros de keyline, tubería, camino y
+  cerca viva, guardado del proyecto, y el botón *Clima del sitio*. Abajo, el árbol de capas
   con las dos pestañas: **LAYERS** (capas del proyecto, agrupadas por los diez
   niveles de la Escala de Permanencia) y **SURFACES** (parámetros de análisis).
 - **Barra superior del mapa.** Las herramientas. Las que necesitan DEM aparecen
@@ -200,9 +201,13 @@ sitio candidato #1 hacia los demás (hasta cinco). Hay que haber pulsado antes
 
 El algoritmo busca la ruta de menor costo entre esos puntos: penaliza la
 pendiente de forma cuadrática, castiga con fuerza los tramos que exceden la
-pendiente máxima y encarece el cruce de cauces. El resultado incluye longitud en
-planta y real, pendiente media y máxima, **metros que quedan fuera de norma**,
-movimiento de tierra, número de alcantarillas y presupuesto.
+pendiente máxima (hasta tres pasadas cada vez más estrictas) y encarece el
+cruce de cauces. El resultado incluye longitud en planta y real, pendiente
+media y máxima, **metros que quedan fuera de norma**, movimiento de tierra,
+número de alcantarillas y presupuesto. Si aún así hay tramos sobre el tope,
+aparecen **en rojo** sobre el camino; la barra de estado y el panel de BoQ
+lo dicen en claro. No se rechaza el trazo: sirve para ver dónde el terreno
+no da.
 
 Los puntos sobre el trazo son las alcantarillas propuestas, en los cruces de
 cauce detectados.
@@ -289,6 +294,44 @@ La puntuación pondera pendiente (35 %), sequedad respecto al flujo concentrado
 (15 %) y fracción de plataforma construible (15 %). Es un cribado de terreno: no
 considera suelo, acceso, servicios ni normativa.
 
+### 3.7 · Cercas vivas
+
+Herramienta *Cerca viva* en la barra superior, o *Cercar perímetro del DEM* en
+el panel izquierdo. Ajusta *Especie*, *Función*, *Espaciamiento* y *Hileras*
+antes de terminar el trazo (Enter o doble click).
+
+Especies de referencia (Centroamérica): madero negro, poró, leucaena, indio
+desnudo, bambú y mixto multi-estrato. Al cambiar de especie se rellena el
+espaciamiento típico; se puede corregir. *Corta-vientos* obliga al menos dos
+hileras.
+
+El mapa pinta la línea en verde y puntos de planta. Tramos con pendiente
+**mayor de 35 %** salen en rojo: la estaca arraiga mal. El BoQ cuenta plantas
+y metros de trazado con precios de referencia.
+
+No sustituye cerca eléctrica, alambre de púas ni un diseño de cortina rompevientos
+con rumbo de viento. El catálogo no es receta de vivero.
+
+### 3.8 · Suelos
+
+Sección *Suelos* del panel derecho. Con un DEM cargado, pulsa **Textura**,
+**pH**, **Materia orgánica** o **Agua disponible**. El mapa se dibuja sobre la
+finca y debajo aparece el perfil medio: arcilla, arena, limo, MO, pH y AWC.
+
+Las coberturas son **SoilGrids 250 m** (ISRIC), las mismas variables que
+CLIMCOW lee en Google Earth Engine (OpenLandMap / SoilGrids): arcilla, arena,
+carbono orgánico, pH y humedad a 33 kPa (capacidad de campo) y 1500 kPa (punto
+de marchitez). Textura: arenoso si arena > 70 % y arcilla < 15 %; arcilloso si
+arcilla > 40 %; el resto franco. Materia orgánica = C × 1,724. Agua disponible
+= (CC − PM) × 500 mm de raíz (el valor por defecto de CLIMCOW).
+
+Clases de lectura: MO < 2 / 2–5 / > 5 %; pH < 5,5 / 5,5–7,5 / > 7,5; AWC
+< 50 / 50–120 / > 120 mm.
+
+La malla de 250 m es gruesa: un predio de pocas hectáreas puede caer en una
+sola celda. Sirve para zonificar a escala de paisaje, no para sustituir una
+calicata ni un análisis de laboratorio.
+
 ### 3.10 · Energía
 
 Sección *Solar / sombra*. Fija el *Día del año* (1 a 365) y la *Hora local*, y
@@ -303,12 +346,17 @@ donde se decide la ubicación de paneles, invernaderos y frutales exigentes.
 
 ## 4. Presupuesto
 
-El panel izquierdo acumula las cantidades de todas las tuberías y caminos del
-proyecto en una tabla única, con precios unitarios de referencia y total.
+El panel izquierdo, sección *9 · Economía*, acumula tuberías, caminos y cercas
+vivas. Cada partida muestra cantidad y **precio unitario editable**: ajústalo a
+tu mercado; el total y el USD/ha (si hay polígono del DEM) se recalculan. El
+desglose Agua / Acceso / Cercas compara alternativas de trazo.
 
-Son órdenes de magnitud para **comparar alternativas de trazo**, no una
-cotización. Los precios unitarios están fijos en el código y no reflejan mercado
-local ni condiciones de obra.
+**Exportar CSV** baja la tabla. **Precios de código** vuelve a los valores
+embebidos en tubería, movimiento de tierra y estacas.
+
+Son órdenes de magnitud para **comparar alternativas**, no una cotización. No
+incluyen flete, imprevistos ni rendimiento de cuadrilla. Los precios editados
+se guardan con el proyecto.
 
 ---
 

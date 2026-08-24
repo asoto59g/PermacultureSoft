@@ -23,6 +23,7 @@ const TOOLS: { id: ToolId; label: string; group: string; needsDem?: boolean }[] 
   { id: "pressure-field", label: "Presión", group: "hydro", needsDem: true },
   { id: "pipe", label: "Tubería", group: "hydro", needsDem: true },
   { id: "road", label: "Camino", group: "access", needsDem: true },
+  { id: "fence", label: "Cerca viva", group: "fences", needsDem: true },
   { id: "keyline", label: "Keyline", group: "eco", needsDem: true },
 ];
 

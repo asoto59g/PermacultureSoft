@@ -208,7 +208,8 @@ Fija *Pendiente máx.* (12 % por defecto) y *Ancho de calzada*. *Camino*:
 clic en origen, destino y, si hace falta, puntos intermedios. Enter.
 
 El trazo evita pendientes fuertes y penaliza cruzar cauces. Sobre la línea
-aparecen las alcantarillas. Lee en el panel: metros fuera de norma,
+aparecen las alcantarillas. Los tramos que superan el tope se pintan en
+rojo. Lee en el panel y en la barra de estado: metros fuera de norma,
 movimiento de tierra y presupuesto. Si hay muchos metros fuera de norma,
 baja la pendiente máxima o mueve los puntos; no «aceptes» un 18 % porque
 el algoritmo lo dibujó.
@@ -259,10 +260,41 @@ equivocada.»*
 
 ---
 
+## Escena 8a · Cercas vivas
+
+Panel izquierdo: especie (madero negro por defecto), función y
+espaciamiento. *Cerca viva* en la barra: click, click, Enter. O *Cercar
+perímetro del DEM* para el lindero de la finca.
+
+Verde = trazo. Puntos = plantas. Rojo = pendiente > 35 %. El BoQ cuenta
+estacas.
+
+**Narración sugerida.** *«La cerca viva se decide después de caminos y
+potreros. Metros y plantas, no alambre. Si el tramo sale rojo, no es
+sitio para estaca.»*
+
+---
+
+## Escena 8b · Suelos
+
+Panel derecho, sección *Suelos*. **Textura** primero: arenoso, franco o
+arcilloso. Luego **pH**, **Materia orgánica** y **Agua disponible**. El bloque
+bajo los botones es el perfil medio de la finca (CLIMCOW / SoilGrids 250 m).
+
+Si el predio es pequeño, el mapa sale casi uniforme: es la malla, no un error.
+No sustituye calicata.
+
+**Narración sugerida.** *«Esto es lo que hay a 250 metros de celda. Textura
+para laboreo y riego, pH para qué planta, materia orgánica para fertilidad,
+agua disponible para el estiaje. Si necesitas el hoyo, hay que cavar.»*
+
+---
+
 ## Escena 9 · Presupuesto, guardar, cerrar
 
-El panel izquierdo acumula tuberías y caminos en una sola tabla. Sirve
-para **comparar trazos**, no para cotizar.
+El panel izquierdo, *9 · Economía*, acumula tuberías, caminos y cercas.
+Edita el precio unitario si tu mercado no coincide. **Exportar CSV** para
+llevar la tabla. Sirve para **comparar trazos**, no para cotizar.
 
 - **Guardar** — queda en el navegador.
 - **Exportar JSON** — archivo para otro equipo o para respaldo.
@@ -294,6 +326,8 @@ ventana de control a la fuerza: Detener y salir cierra los servidores.»*
 6. Camino origen–destino. Leer metros fuera de norma.
 7. Keyline desde el keypoint (1:n o Madre). Leer ICL, cortes y replanteo.
 8. Buscar sitios. Sombra en solsticios.
+8a. Cercas vivas: trazo o perímetro del DEM.
+8b. Suelos: textura, pH, MO, agua disponible.
 9. Comparar presupuesto de las alternativas. Exportar JSON.
 
 ---

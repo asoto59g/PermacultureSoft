@@ -24,6 +24,7 @@ from ecosystems import (  # noqa: E402
     generate_keyline_pattern,
     generate_mother_keylines,
 )
+from fences import design_living_fence, species_catalog  # noqa: E402
 from keyline_diag import diagnose_and_cut_keylines  # noqa: E402
 from footprint import dem_footprint  # noqa: E402
 from hydrology import (  # noqa: E402
@@ -35,6 +36,7 @@ from hydrology import (  # noqa: E402
 )
 from pipes import aggregate_boq, design_pipe  # noqa: E402
 from solar import solar_shade_map  # noqa: E402
+from soils import render_soil_map  # noqa: E402
 from surfaces import render_surface_map  # noqa: E402
 
 app = FastAPI(
@@ -579,5 +581,59 @@ async def dam_suitability_map(req: DamSuitabilityRequest):
             req.gaussian_sigma,
         )
         return {"status": "success", **result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+class SoilMapRequest(BaseModel):
+    dem_id: str
+    map_type: str = "texture"
+    resample_pct: float = 50
+
+
+@app.post("/api/soils/map")
+@app.post("/api/soils/map/")
+async def soil_map(req: SoilMapRequest):
+    path = _dem_path(req.dem_id)
+    try:
+        result = render_soil_map(str(path), req.map_type, req.resample_pct)
+        return {"status": "success", **result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+class LivingFenceRequest(BaseModel):
+    dem_id: str
+    vertices: list[list[float]]
+    species: str = "gliricidia"
+    spacing_m: float | None = None
+    rows: int | None = None
+    purpose: str = "lindero"
+
+
+@app.get("/api/fences/species")
+@app.get("/api/fences/species/")
+async def fence_species():
+    return {"status": "success", "species": species_catalog()}
+
+
+@app.post("/api/fences/living")
+@app.post("/api/fences/living/")
+async def living_fence(req: LivingFenceRequest):
+    path = _dem_path(req.dem_id)
+    try:
+        result = design_living_fence(
+            str(path),
+            req.vertices,
+            req.species,
+            req.spacing_m,
+            req.rows,
+            req.purpose,
+        )
+        return {"status": "success", **result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

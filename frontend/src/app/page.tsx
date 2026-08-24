@@ -51,12 +51,15 @@ export default function Home() {
     rebuildActiveOverlay,
     runSolar,
     runBuildingSites,
+    runSoilMap,
     connectSiteRoads,
+    fencePerimeter,
     siteCount,
     saveProject,
     loadProject,
     pipes,
     roads,
+    fences,
     boq,
     canUndo,
     canRedo,
@@ -127,11 +130,18 @@ export default function Home() {
           pipeFlowLs={state.pipeFlowLs}
           roadMaxGradePct={state.roadMaxGradePct}
           roadWidthM={state.roadWidthM}
+          fenceSpecies={state.fenceSpecies}
+          fenceSpacingM={state.fenceSpacingM}
+          fenceRows={state.fenceRows}
+          fencePurpose={state.fencePurpose}
           loading={state.loading}
           error={state.error}
           pipes={pipes}
           roads={roads}
+          fences={fences}
           boq={boq}
+          onPrice={(key, unitPrice) => dispatch({ type: "SET_PRICE", key, unitPrice })}
+          onResetPrices={() => dispatch({ type: "RESET_PRICES" })}
           onInterval={applyContourInterval}
           onKeylineOffset={(v) =>
             dispatch({ type: "SET_KEYLINE_OFFSET", offset: v })
@@ -144,6 +154,11 @@ export default function Home() {
           onPipeFlow={(v) => dispatch({ type: "SET_PIPE_FLOW", flow: v })}
           onRoadGrade={(v) => dispatch({ type: "SET_ROAD_GRADE", grade: v })}
           onRoadWidth={(v) => dispatch({ type: "SET_ROAD_WIDTH", width: v })}
+          onFenceSpecies={(v) => dispatch({ type: "SET_FENCE_SPECIES", species: v })}
+          onFenceSpacing={(v) => dispatch({ type: "SET_FENCE_SPACING", spacing: v })}
+          onFenceRows={(v) => dispatch({ type: "SET_FENCE_ROWS", rows: v })}
+          onFencePurpose={(v) => dispatch({ type: "SET_FENCE_PURPOSE", purpose: v })}
+          onFencePerimeter={fencePerimeter}
           onUpload={async (file) => {
             const dem = await handleUpload(file);
             focusDem(dem);
@@ -227,6 +242,7 @@ export default function Home() {
             onSolarDay={(v) => dispatch({ type: "SET_SOLAR_DAY", day: v })}
             onSolarHour={(v) => dispatch({ type: "SET_SOLAR_HOUR", hour: v })}
             onSolarRebuild={runSolar}
+            onSoilMap={runSoilMap}
             siteMaxSlopePct={state.siteMaxSlopePct}
             sitePadM={state.sitePadM}
             onSiteSlope={(v) => dispatch({ type: "SET_SITE_SLOPE", slope: v })}

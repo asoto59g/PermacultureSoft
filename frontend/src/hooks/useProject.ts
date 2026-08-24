@@ -2,18 +2,23 @@
 
 import { useCallback, useMemo, useReducer, useRef } from "react";
 import {
+  designLivingFence,
   designPipe,
   designRoad,
   delineateWatershed,
   fetchBuildingSites,
   fetchDamSuitability,
   fetchPressureField,
+  fetchSoilMap,
   fetchSolarMap,
   fetchSurfaceMap,
   generateKeyline,
   rebuildContours,
   sampleElevation,
   uploadDem,
+  type LivingFenceResult,
+  type RoadDesignResult,
+  type SoilMapType,
   type SurfaceMapType,
 } from "@/lib/api";
 import { formatArea, formatLength, newId, pathLengthMeters, ringAreaMeters2 } from "@/lib/geo";
@@ -23,16 +28,21 @@ import {
   parseProject,
   toSavedProject,
 } from "@/lib/projectIO";
+import { FENCE_SPECIES } from "@/lib/fences";
+import { aggregateProjectBoq, parsePriceBook, type PriceBook } from "@/lib/economy";
 import type {
   BasemapId,
   DemInfo,
   DrawFeature,
   FeatureCollection,
+  FenceFeature,
+  FencePurpose,
   LayerNode,
   LegendItem,
   PipeFeature,
   RasterOverlay,
   RoadFeature,
+  SoilProfile,
   ToolId,
 } from "@/lib/types";
 
@@ -42,6 +52,13 @@ type Draft = {
 
 type Snapshot = {
   layers: LayerNode[];
+};
+
+const SOIL_LAYER: Record<SoilMapType, string> = {
+  texture: "Suelos · textura",
+  ph: "Suelos · pH",
+  om: "Suelos · materia orgánica",
+  awc: "Suelos · agua disponible",
 };
 
 type State = {
@@ -61,6 +78,10 @@ type State = {
   pipeFlowLs: number;
   roadMaxGradePct: number;
   roadWidthM: number;
+  fenceSpecies: string;
+  fenceSpacingM: number;
+  fenceRows: number;
+  fencePurpose: FencePurpose;
   siteMaxSlopePct: number;
   sitePadM: number;
   solarDay: number;
@@ -82,6 +103,7 @@ type State = {
   pointerElev: number | null;
   measureLive: { lengthM: number; areaM2?: number } | null;
   hoverInfo: string | null;
+  priceBook: PriceBook;
 };
 
 type Action =
@@ -97,6 +119,10 @@ type Action =
   | { type: "SET_PIPE_FLOW"; flow: number }
   | { type: "SET_ROAD_GRADE"; grade: number }
   | { type: "SET_ROAD_WIDTH"; width: number }
+  | { type: "SET_FENCE_SPECIES"; species: string }
+  | { type: "SET_FENCE_SPACING"; spacing: number }
+  | { type: "SET_FENCE_ROWS"; rows: number }
+  | { type: "SET_FENCE_PURPOSE"; purpose: FencePurpose }
   | { type: "SET_SITE_SLOPE"; slope: number }
   | { type: "SET_SITE_PAD"; pad: number }
   | { type: "SET_SOLAR_DAY"; day: number }
@@ -113,6 +139,8 @@ type Action =
   | { type: "SET_STATUS"; message: string | null }
   | { type: "SET_POINTER"; lon: number; lat: number; elev: number | null }
   | { type: "SET_HOVER"; text: string | null }
+  | { type: "SET_PRICE"; key: string; unitPrice: number }
+  | { type: "RESET_PRICES" }
   | { type: "SET_DRAFT"; draft: Draft }
   | { type: "SET_MEASURE_LIVE"; live: State["measureLive"] }
   | { type: "LOAD_DEM"; dem: DemInfo; contours: FeatureCollection }
@@ -142,7 +170,7 @@ function reducer(state: State, action: Action): State {
         activeTool: action.tool,
         draft: null,
         measureLive: null,
-        statusMessage: toolHint(action.tool),
+        statusMessage: toolHint(action.tool, state.keylineMode),
       };
     case "SET_BASEMAP":
       return { ...state, basemap: action.basemap };
@@ -153,7 +181,15 @@ function reducer(state: State, action: Action): State {
     case "SET_KEYLINE_COUNT":
       return { ...state, keylineCount: action.count };
     case "SET_KEYLINE_MODE":
-      return { ...state, keylineMode: action.mode };
+      return {
+        ...state,
+        keylineMode: action.mode,
+        draft: state.activeTool === "keyline" ? null : state.draft,
+        statusMessage:
+          state.activeTool === "keyline"
+            ? toolHint("keyline", action.mode)
+            : state.statusMessage,
+      };
     case "SET_KEYLINE_FALL":
       return { ...state, keylineFall: action.fall };
     case "SET_KEYLINE_STAKE":
@@ -166,6 +202,28 @@ function reducer(state: State, action: Action): State {
       return { ...state, roadMaxGradePct: action.grade };
     case "SET_ROAD_WIDTH":
       return { ...state, roadWidthM: action.width };
+    case "SET_FENCE_SPECIES": {
+      const spec = FENCE_SPECIES.find((s) => s.id === action.species);
+      return {
+        ...state,
+        fenceSpecies: action.species,
+        fenceSpacingM: spec?.spacing_m ?? state.fenceSpacingM,
+        fenceRows: spec?.rows ?? state.fenceRows,
+      };
+    }
+    case "SET_FENCE_SPACING":
+      return { ...state, fenceSpacingM: action.spacing };
+    case "SET_FENCE_ROWS":
+      return { ...state, fenceRows: action.rows };
+    case "SET_FENCE_PURPOSE":
+      return {
+        ...state,
+        fencePurpose: action.purpose,
+        fenceRows:
+          action.purpose === "cortavientos"
+            ? Math.max(state.fenceRows, 2)
+            : state.fenceRows,
+      };
     case "SET_SITE_SLOPE":
       return { ...state, siteMaxSlopePct: action.slope };
     case "SET_SITE_PAD":
@@ -213,6 +271,13 @@ function reducer(state: State, action: Action): State {
       };
     case "SET_HOVER":
       return { ...state, hoverInfo: action.text };
+    case "SET_PRICE":
+      return {
+        ...state,
+        priceBook: { ...state.priceBook, [action.key]: action.unitPrice },
+      };
+    case "RESET_PRICES":
+      return { ...state, priceBook: {} };
     case "SET_DRAFT":
       return { ...state, draft: action.draft };
     case "SET_MEASURE_LIVE":
@@ -372,6 +437,10 @@ function reducer(state: State, action: Action): State {
         pipeFlowLs: Number(p.pipeFlowLs ?? state.pipeFlowLs),
         roadMaxGradePct: Number(p.roadMaxGradePct ?? state.roadMaxGradePct),
         roadWidthM: Number(p.roadWidthM ?? state.roadWidthM),
+        fenceSpecies: String(p.fenceSpecies ?? state.fenceSpecies),
+        fenceSpacingM: Number(p.fenceSpacingM ?? state.fenceSpacingM),
+        fenceRows: Number(p.fenceRows ?? state.fenceRows),
+        fencePurpose: (p.fencePurpose as FencePurpose) || state.fencePurpose,
         siteMaxSlopePct: Number(p.siteMaxSlopePct ?? state.siteMaxSlopePct),
         sitePadM: Number(p.sitePadM ?? state.sitePadM),
         solarDay: Number(p.solarDay ?? state.solarDay),
@@ -381,6 +450,7 @@ function reducer(state: State, action: Action): State {
         slopeThreshold: Number(p.slopeThreshold ?? state.slopeThreshold),
         smallestBasinHa: Number(p.smallestBasinHa ?? state.smallestBasinHa),
         basemap: (p.basemap as BasemapId) || state.basemap,
+        priceBook: parsePriceBook(p.priceBook),
         legend: null,
         legendTitle: null,
         overlayId: null,
@@ -398,7 +468,10 @@ function fmtInterval(value: number): string {
   return value < 1 ? value.toFixed(2) : String(Math.round(value * 100) / 100);
 }
 
-function toolHint(tool: ToolId): string | null {
+function toolHint(
+  tool: ToolId,
+  keylineMode: State["keylineMode"] = "contour"
+): string | null {
   switch (tool) {
     case "select":
       return "Seleccionar / navegar";
@@ -415,14 +488,110 @@ function toolHint(tool: ToolId): string | null {
     case "pipe":
       return "Click vértices de la tubería · Enter o doble-click para calcular BoQ";
     case "keyline":
-      return "Click dos puntos: keypoint → rumbo de cultivo";
+      return keylineMode === "mother"
+        ? "Un clic cerca del keypoint: elige la curva madre"
+        : "Dos clics: keypoint y luego rumbo de cultivo";
     case "road":
       return "Click origen y destino (o más puntos) · Enter para trazar el camino";
+    case "fence":
+      return "Click vértices de la cerca viva · Enter o doble-click para plantar";
     case "pressure-field":
       return "Click en el tanque / fuente de gravedad";
     default:
       return null;
   }
+}
+
+function roadFromResult(result: RoadDesignResult, id: string): RoadFeature {
+  return {
+    id,
+    waypoints: result.waypoints,
+    geojson: result.geojson,
+    lengthM: result.length_3d_m,
+    widthM: result.width_m,
+    maxGradePct: result.max_grade_found_pct,
+    meanGradePct: result.mean_grade_pct,
+    overGradeM: result.over_grade_length_m,
+    limitGradePct: result.max_grade_pct,
+    cutFillM3: result.cut_fill_m3,
+    culverts: result.culverts,
+    boq: result.boq,
+    costRefUsd: result.cost_ref_usd,
+  };
+}
+
+function roadLayerName(road: RoadFeature, prefix = "Camino"): string {
+  const m = road.lengthM.toFixed(0);
+  const limit = road.limitGradePct ?? 12;
+  if (road.overGradeM > 0) {
+    return `${prefix} ${m} m · ${road.overGradeM} m sobre ${limit}%`;
+  }
+  return `${prefix} ${m} m · dentro de ${limit}%`;
+}
+
+function roadStatusMessage(road: RoadFeature): string {
+  const rest = `${road.cutFillM3} m³ · ${road.culverts} alcantarilla(s)`;
+  const limit = road.limitGradePct ?? 12;
+  if (road.overGradeM > 0) {
+    return (
+      `Camino ${road.lengthM} m · FUERA DE NORMA: ${road.overGradeM} m sobre ${limit}% ` +
+      `(máx ${road.maxGradePct}%) · ${rest}`
+    );
+  }
+  return (
+    `Camino ${road.lengthM} m · pendiente dentro de ${limit}% ` +
+    `(máx ${road.maxGradePct}%) · ${rest}`
+  );
+}
+
+function roadOverWarning(road: RoadFeature): string | null {
+  if (road.overGradeM <= 0) return null;
+  const limit = road.limitGradePct ?? 12;
+  return (
+    `Pendiente: ${road.overGradeM} m sobre el tope de ${limit}%. ` +
+    `El tramo rojo en el mapa supera el límite.`
+  );
+}
+
+function fenceFromResult(result: LivingFenceResult, id: string): FenceFeature {
+  return {
+    id,
+    vertices: result.vertices,
+    geojson: result.geojson,
+    species: result.species,
+    speciesName: result.species_name,
+    purpose: result.purpose as FencePurpose,
+    spacingM: result.spacing_m,
+    rows: result.rows,
+    lengthM: result.length_2d_m,
+    length3dM: result.length_3d_m,
+    plantCount: result.plant_count,
+    meanGradePct: result.mean_grade_pct,
+    maxGradePct: result.max_grade_pct,
+    steepLengthM: result.steep_length_m,
+    steepLimitPct: result.steep_limit_pct,
+    notes: result.notes,
+    boq: result.boq,
+    costRefUsd: result.cost_ref_usd,
+  };
+}
+
+function fenceLayerName(fence: FenceFeature): string {
+  const steep =
+    fence.steepLengthM > 0 ? ` · ${fence.steepLengthM} m > ${fence.steepLimitPct}%` : "";
+  return `Cerca ${fence.lengthM} m · ${fence.plantCount} plantas${steep}`;
+}
+
+function fenceStatusMessage(fence: FenceFeature): string {
+  const steep =
+    fence.steepLengthM > 0
+      ? ` · ${fence.steepLengthM} m sobre ${fence.steepLimitPct}% (rojo)`
+      : "";
+  return (
+    `${fence.speciesName} · ${fence.lengthM} m · ${fence.plantCount} ` +
+    `${fence.rows > 1 ? `en ${fence.rows} hileras` : "plantas"}` +
+    ` · máx ${fence.maxGradePct}%${steep}`
+  );
 }
 
 const initialState: State = {
@@ -442,6 +611,10 @@ const initialState: State = {
   pipeFlowLs: 0.5,
   roadMaxGradePct: 12,
   roadWidthM: 4,
+  fenceSpecies: "gliricidia",
+  fenceSpacingM: 0.5,
+  fenceRows: 1,
+  fencePurpose: "lindero",
   siteMaxSlopePct: 12,
   sitePadM: 20,
   solarDay: 80,
@@ -463,6 +636,7 @@ const initialState: State = {
   pointerElev: null,
   measureLive: null,
   hoverInfo: null,
+  priceBook: {},
 };
 
 export function useProject() {
@@ -661,25 +835,12 @@ export function useProject() {
           state.resamplePct,
           state.gaussianSigma
         );
-        const road: RoadFeature = {
-          id: newId("road"),
-          waypoints: result.waypoints,
-          geojson: result.geojson,
-          lengthM: result.length_3d_m,
-          widthM: result.width_m,
-          maxGradePct: result.max_grade_found_pct,
-          meanGradePct: result.mean_grade_pct,
-          overGradeM: result.over_grade_length_m,
-          cutFillM3: result.cut_fill_m3,
-          culverts: result.culverts,
-          boq: result.boq,
-          costRefUsd: result.cost_ref_usd,
-        };
+        const road = roadFromResult(result, newId("road"));
         dispatch({
           type: "PUSH_LAYER",
           layer: {
             id: road.id,
-            name: `Camino ${road.lengthM.toFixed(0)} m · máx ${road.maxGradePct}%`,
+            name: roadLayerName(road),
             category: "access",
             kind: "road",
             visible: true,
@@ -687,12 +848,8 @@ export function useProject() {
             data: road,
           },
         });
-        dispatch({
-          type: "SET_STATUS",
-          message:
-            `Camino ${road.lengthM} m · pendiente media ${road.meanGradePct}% ` +
-            `máx ${road.maxGradePct}% · ${road.cutFillM3} m³ · ${road.culverts} alcantarilla(s)`,
-        });
+        dispatch({ type: "SET_STATUS", message: roadStatusMessage(road) });
+        dispatch({ type: "SET_ERROR", error: roadOverWarning(road) });
       } catch (err) {
         dispatch({
           type: "SET_ERROR",
@@ -713,6 +870,74 @@ export function useProject() {
     ]
   );
 
+  const commitFence = useCallback(
+    async (coords: number[][]) => {
+      if (!state.dem || coords.length < 2) return;
+      dispatch({ type: "SET_LOADING", loading: true });
+      dispatch({ type: "SET_ERROR", error: null });
+      try {
+        const result = await designLivingFence(
+          state.dem.demId,
+          coords,
+          state.fenceSpecies,
+          state.fenceSpacingM,
+          state.fenceRows,
+          state.fencePurpose
+        );
+        const fence = fenceFromResult(result, newId("fence"));
+        dispatch({
+          type: "PUSH_LAYER",
+          layer: {
+            id: fence.id,
+            name: fenceLayerName(fence),
+            category: "fences",
+            kind: "fence",
+            visible: true,
+            opacity: 1,
+            data: fence,
+          },
+        });
+        dispatch({ type: "SET_STATUS", message: fenceStatusMessage(fence) });
+        if (fence.steepLengthM > 0) {
+          dispatch({
+            type: "SET_ERROR",
+            error:
+              `${fence.steepLengthM} m con pendiente > ${fence.steepLimitPct}%. ` +
+              "El tramo rojo complica la estaca; acorta o cambia de especie.",
+          });
+        }
+      } catch (err) {
+        dispatch({
+          type: "SET_ERROR",
+          error: err instanceof Error ? err.message : "Error de cerca viva",
+        });
+      } finally {
+        dispatch({ type: "SET_DRAFT", draft: null });
+        dispatch({ type: "SET_MEASURE_LIVE", live: null });
+        dispatch({ type: "SET_LOADING", loading: false });
+      }
+    },
+    [
+      state.dem,
+      state.fenceSpecies,
+      state.fenceSpacingM,
+      state.fenceRows,
+      state.fencePurpose,
+    ]
+  );
+
+  const fencePerimeter = useCallback(async () => {
+    const ring = state.dem?.footprint?.ring;
+    if (!ring || ring.length < 4) {
+      dispatch({
+        type: "SET_ERROR",
+        error: "Sube un DEM con perímetro para cercar el límite.",
+      });
+      return;
+    }
+    await commitFence(ring);
+  }, [state.dem, commitFence]);
+
   const connectSiteRoads = useCallback(async () => {
     if (!state.dem) return;
     const points = sitePointsFromLayers(state.layers);
@@ -728,6 +953,7 @@ export function useProject() {
     const hub = points[0];
     const spokes = points.slice(1, 6);
     let ok = 0;
+    let over = 0;
     try {
       for (const dest of spokes) {
         const result = await designRoad(
@@ -738,25 +964,12 @@ export function useProject() {
           state.resamplePct,
           state.gaussianSigma
         );
-        const road: RoadFeature = {
-          id: newId("road"),
-          waypoints: result.waypoints,
-          geojson: result.geojson,
-          lengthM: result.length_3d_m,
-          widthM: result.width_m,
-          maxGradePct: result.max_grade_found_pct,
-          meanGradePct: result.mean_grade_pct,
-          overGradeM: result.over_grade_length_m,
-          cutFillM3: result.cut_fill_m3,
-          culverts: result.culverts,
-          boq: result.boq,
-          costRefUsd: result.cost_ref_usd,
-        };
+        const road = roadFromResult(result, newId("road"));
         dispatch({
           type: "PUSH_LAYER",
           layer: {
             id: road.id,
-            name: `Acceso sitio · ${road.lengthM.toFixed(0)} m · máx ${road.maxGradePct}%`,
+            name: roadLayerName(road, "Acceso sitio"),
             category: "access",
             kind: "road",
             visible: true,
@@ -764,11 +977,22 @@ export function useProject() {
             data: road,
           },
         });
+        if (road.overGradeM > 0) over += 1;
         ok += 1;
       }
       dispatch({
         type: "SET_STATUS",
-        message: `${ok} camino(s) desde el sitio #1 hacia los demás candidatos`,
+        message:
+          over > 0
+            ? `${ok} camino(s) desde el sitio #1 · ${over} con tramos sobre ${state.roadMaxGradePct}%`
+            : `${ok} camino(s) desde el sitio #1 hacia los demás candidatos`,
+      });
+      dispatch({
+        type: "SET_ERROR",
+        error:
+          over > 0
+            ? `${over} camino(s) tienen tramos sobre el tope de ${state.roadMaxGradePct}%. El tramo rojo en el mapa supera el límite.`
+            : null,
       });
     } catch (err) {
       dispatch({
@@ -882,12 +1106,13 @@ export function useProject() {
         return;
       }
 
-      if (tool === "pipe" || tool === "road") {
+      if (tool === "pipe" || tool === "road" || tool === "fence") {
         const prev = state.draft?.coords || [];
         if (isDouble) {
           const coords = prev.length >= 2 ? prev : [...prev, [lon, lat]];
           if (tool === "pipe") await commitPipe(coords);
-          else await commitRoad(coords);
+          else if (tool === "road") await commitRoad(coords);
+          else await commitFence(coords);
           return;
         }
         const coords = [...prev, [lon, lat]];
@@ -901,7 +1126,9 @@ export function useProject() {
           message:
             tool === "pipe"
               ? `Tubería: ${coords.length} vértice(s) · Enter para diseñar`
-              : `Camino: ${coords.length} punto(s) · Enter para trazar`,
+              : tool === "road"
+                ? `Camino: ${coords.length} punto(s) · Enter para trazar`
+                : `Cerca viva: ${coords.length} vértice(s) · Enter para plantar`,
         });
         return;
       }
@@ -986,6 +1213,7 @@ export function useProject() {
       finishDraw,
       commitPipe,
       commitRoad,
+      commitFence,
     ]
   );
 
@@ -1145,6 +1373,39 @@ export function useProject() {
     }
   }, [state.dem, state.solarDay, state.solarHour, state.resamplePct, state.gaussianSigma]);
 
+  const runSoilMap = useCallback(
+    async (mapType: SoilMapType) => {
+      if (!state.dem) return;
+      dispatch({ type: "SET_LOADING", loading: true });
+      dispatch({ type: "SET_ERROR", error: null });
+      try {
+        const result = await fetchSoilMap(state.dem.demId, mapType, state.resamplePct);
+        applyOverlay(`soil-${mapType}`, SOIL_LAYER[mapType], "soils", result, dispatch);
+        const p = result.profile;
+        if (p) {
+          const bits = [
+            p.texture,
+            p.om_pct != null ? `MO ${p.om_pct}%` : "",
+            p.ph != null ? `pH ${p.ph}` : "",
+            p.awc_mm != null ? `AWC ${p.awc_mm} mm` : "",
+          ].filter(Boolean);
+          dispatch({
+            type: "SET_STATUS",
+            message: `Suelos · ${bits.join(" · ")}`,
+          });
+        }
+      } catch (err) {
+        dispatch({
+          type: "SET_ERROR",
+          error: err instanceof Error ? err.message : "Error de suelos",
+        });
+      } finally {
+        dispatch({ type: "SET_LOADING", loading: false });
+      }
+    },
+    [state.dem, state.resamplePct]
+  );
+
   const rebuildActiveOverlay = useCallback(async () => {
     const id = state.overlayId;
     if (!id || !state.dem) return;
@@ -1166,6 +1427,10 @@ export function useProject() {
     }
     if (id === "building-sites") {
       await runBuildingSites();
+      return;
+    }
+    if (id.startsWith("soil-")) {
+      await runSoilMap(id.slice(5) as SoilMapType);
     }
   }, [
     state.overlayId,
@@ -1175,6 +1440,7 @@ export function useProject() {
     runDamSuitability,
     runSolar,
     runBuildingSites,
+    runSoilMap,
   ]);
 
   const finishDraft = useCallback(() => {
@@ -1190,13 +1456,19 @@ export function useProject() {
     if (tool === "road") {
       void commitRoad(coords);
     }
-  }, [state.activeTool, state.draft, finishDraw, commitPipe, commitRoad]);
+    if (tool === "fence") {
+      void commitFence(coords);
+    }
+  }, [state.activeTool, state.draft, finishDraw, commitPipe, commitRoad, commitFence]);
 
   const cancelDraft = useCallback(() => {
     dispatch({ type: "SET_DRAFT", draft: null });
     dispatch({ type: "SET_MEASURE_LIVE", live: null });
-    dispatch({ type: "SET_STATUS", message: toolHint(state.activeTool) });
-  }, [state.activeTool]);
+    dispatch({
+      type: "SET_STATUS",
+      message: toolHint(state.activeTool, state.keylineMode),
+    });
+  }, [state.activeTool, state.keylineMode]);
 
   const pipes = useMemo(
     () =>
@@ -1214,31 +1486,25 @@ export function useProject() {
     [state.layers]
   );
 
-  const boq = useMemo(() => {
-    const rows = new Map<string, { item: string; qty: number; unit: string; unit_price: number; total: number }>();
-    let cost = 0;
-    for (const source of [...pipes, ...roads]) {
-      for (const line of source.boq || []) {
-        const key = `${line.item}|${line.unit}`;
-        const prev = rows.get(key);
-        if (prev) {
-          prev.qty += line.qty;
-          prev.total += line.total;
-        } else {
-          rows.set(key, { ...line });
-        }
-        cost += line.total;
-      }
-    }
-    return {
-      rows: [...rows.values()].map((r) => ({
-        ...r,
-        qty: Math.round(r.qty * 100) / 100,
-        total: Math.round(r.total * 100) / 100,
-      })),
-      costRefUsd: Math.round(cost * 100) / 100,
-    };
-  }, [pipes, roads]);
+  const fences = useMemo(
+    () =>
+      state.layers
+        .filter((l) => l.kind === "fence")
+        .map((l) => l.data as FenceFeature),
+    [state.layers]
+  );
+
+  const boq = useMemo(
+    () =>
+      aggregateProjectBoq(
+        pipes,
+        roads,
+        fences,
+        state.priceBook,
+        state.dem?.footprint?.area_ha ?? null
+      ),
+    [pipes, roads, fences, state.priceBook, state.dem]
+  );
 
   const projectParams = useCallback(
     () => ({
@@ -1252,6 +1518,10 @@ export function useProject() {
       pipeFlowLs: state.pipeFlowLs,
       roadMaxGradePct: state.roadMaxGradePct,
       roadWidthM: state.roadWidthM,
+      fenceSpecies: state.fenceSpecies,
+      fenceSpacingM: state.fenceSpacingM,
+      fenceRows: state.fenceRows,
+      fencePurpose: state.fencePurpose,
       siteMaxSlopePct: state.siteMaxSlopePct,
       sitePadM: state.sitePadM,
       solarDay: state.solarDay,
@@ -1261,6 +1531,7 @@ export function useProject() {
       slopeThreshold: state.slopeThreshold,
       smallestBasinHa: state.smallestBasinHa,
       basemap: state.basemap,
+      priceBook: state.priceBook,
     }),
     [
       state.contourInterval,
@@ -1273,6 +1544,10 @@ export function useProject() {
       state.pipeFlowLs,
       state.roadMaxGradePct,
       state.roadWidthM,
+      state.fenceSpecies,
+      state.fenceSpacingM,
+      state.fenceRows,
+      state.fencePurpose,
       state.siteMaxSlopePct,
       state.sitePadM,
       state.solarDay,
@@ -1282,6 +1557,7 @@ export function useProject() {
       state.slopeThreshold,
       state.smallestBasinHa,
       state.basemap,
+      state.priceBook,
     ]
   );
 
@@ -1341,12 +1617,15 @@ export function useProject() {
     rebuildActiveOverlay,
     runSolar,
     runBuildingSites,
+    runSoilMap,
     connectSiteRoads,
+    fencePerimeter,
     siteCount: sitePointsFromLayers(state.layers).length,
     saveProject,
     loadProject,
     pipes,
     roads,
+    fences,
     boq,
     canUndo: state.past.length > 0,
     canRedo: state.future.length > 0,
@@ -1387,6 +1666,8 @@ function applyOverlay(
     source: result.source,
     geotiffB64: result.geotiff_b64,
     geojson: result.geojson ?? null,
+    profile: result.profile ?? null,
+    notes: result.notes ?? null,
   };
   dispatch({
     type: "UPSERT_LAYER",
@@ -1417,6 +1698,8 @@ type OverlayResponseLike = {
   source?: RasterOverlay["source"];
   geotiff_b64?: string | null;
   geojson?: RasterOverlay["geojson"];
+  profile?: SoilProfile | null;
+  notes?: string | null;
 };
 
 function summarizeKeyline(geojson: FeatureCollection): { label: string; message: string } {

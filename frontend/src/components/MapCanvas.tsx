@@ -18,6 +18,7 @@ import type {
   BasemapId,
   DrawFeature,
   FeatureCollection,
+  FenceFeature,
   LayerNode,
   PipeFeature,
   RasterOverlay,
@@ -239,13 +240,45 @@ export function MapCanvas({
             filled: true,
             pickable: true,
             pointType: "circle",
-            getLineColor: [250, 190, 60, opacity],
-            getLineWidth: Math.max(2, road.widthM / 2),
+            getLineColor: (d: { properties?: { kind?: string } }) =>
+              d.properties?.kind === "over-grade"
+                ? [255, 70, 70, 255]
+                : [250, 190, 60, opacity],
+            getLineWidth: (d: { properties?: { kind?: string } }) =>
+              d.properties?.kind === "over-grade"
+                ? Math.max(3, road.widthM * 0.7)
+                : Math.max(2, road.widthM / 2),
             lineWidthUnits: "meters",
             lineWidthMinPixels: 2,
             getPointRadius: 5,
             pointRadiusUnits: "pixels",
             getFillColor: [80, 200, 255, 230],
+            parameters: { depthTest: false },
+          })
+        );
+      }
+
+      if (layer.kind === "fence") {
+        const fence = layer.data as FenceFeature;
+        result.push(
+          new GeoJsonLayer({
+            id: layer.id,
+            data: fence.geojson as never,
+            stroked: true,
+            filled: true,
+            pickable: true,
+            pointType: "circle",
+            getLineColor: (d: { properties?: { kind?: string } }) =>
+              d.properties?.kind === "steep"
+                ? [220, 50, 50, 255]
+                : [110, 180, 50, opacity],
+            getLineWidth: (d: { properties?: { kind?: string } }) =>
+              d.properties?.kind === "steep" ? 4 : Math.max(2, fence.rows * 2),
+            lineWidthUnits: "pixels",
+            lineWidthMinPixels: 2,
+            getFillColor: [190, 230, 90, 230],
+            getPointRadius: 3,
+            pointRadiusUnits: "pixels",
             parameters: { depthTest: false },
           })
         );
@@ -391,8 +424,28 @@ export function MapCanvas({
               props.source === "mask" ? "celdas con dato" : "extensión del ráster"
             }`
           );
+        } else if (props?.kind === "over-grade") {
+          onHoverFeature(
+            `Fuera de norma · ${props.grade_pct}% en ${props.length_m} m ` +
+              `(tope ${props.limit_pct}%) · km ${props.chainage_m}`
+          );
         } else if (props?.kind === "road") {
-          onHoverFeature(`Camino ${props.length_m} m · máx ${props.max_grade_pct}%`);
+          const over =
+            typeof props.over_grade_length_m === "number" && props.over_grade_length_m > 0
+              ? ` · ${props.over_grade_length_m} m sobre ${props.limit_grade_pct}%`
+              : "";
+          onHoverFeature(`Camino ${props.length_m} m · máx ${props.max_grade_pct}%${over}`);
+        } else if (props?.kind === "living-fence") {
+          onHoverFeature(
+            `Cerca ${props.species_name} · ${props.length_m} m · ${props.plant_count} plantas · máx ${props.max_grade_pct}%`
+          );
+        } else if (props?.kind === "steep") {
+          onHoverFeature(
+            `Pendiente ${props.grade_pct}% en ${props.length_m} m (tope ${props.limit_pct}%)`
+          );
+        } else if (props?.kind === "plant" || props?.type === "Plant") {
+          const z = typeof props.z === "number" ? `${props.z} m` : "sin cota";
+          onHoverFeature(`Planta ${props.chain_m ?? "?"} m · ${z}`);
         } else if (info.object && typeof info.object === "object" && "pipe" in info.object) {
           const p = (info.object as { pipe: PipeFeature }).pipe;
           onHoverFeature(

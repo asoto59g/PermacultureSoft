@@ -40,13 +40,81 @@ def _cost_surface(
     acc: np.ndarray,
     max_grade_pct: float,
     stream_cells: float,
+    over_penalty: float = 6.0,
 ) -> np.ndarray:
     ratio = slope_pct / max(max_grade_pct, 0.5)
     cost = 1.0 + 8.0 * np.square(np.clip(ratio, 0, None))
-    cost = np.where(slope_pct > max_grade_pct, cost * 6.0, cost)
+    cost = np.where(slope_pct > max_grade_pct, cost * over_penalty, cost)
     cost = np.where(acc >= stream_cells, cost + 25.0, cost)
     cost = np.where(np.isfinite(cost), cost, np.inf)
     return np.where(np.isfinite(elev), cost, np.inf)
+
+
+def _trace_cells(
+    cost: np.ndarray,
+    dem: dict,
+    waypoints: list[list[float]],
+) -> list[tuple[int, int]]:
+    from skimage.graph import route_through_array
+
+    cells: list[tuple[int, int]] = []
+    for a, b in zip(waypoints, waypoints[1:]):
+        start = _rowcol(dem, a[0], a[1])
+        end = _rowcol(dem, b[0], b[1])
+        try:
+            leg, _weight = route_through_array(
+                cost, start, end, fully_connected=True, geometric=True
+            )
+        except Exception as exc:
+            raise ValueError(
+                "No se encontró ruta entre los puntos (¿hay huecos sin datos en el DEM?)."
+            ) from exc
+        cells.extend(leg if not cells else leg[1:])
+    if len(cells) < 2:
+        raise ValueError("El trazo resultante es demasiado corto.")
+    return cells
+
+
+def _over_grade_features(
+    dist: np.ndarray,
+    lons: np.ndarray,
+    lats: np.ndarray,
+    sample_d: np.ndarray,
+    sample_z: np.ndarray,
+    max_grade_pct: float,
+) -> list[dict[str, Any]]:
+    """LineString por cada tramo del perfil (20 m) que supera el tope."""
+    features: list[dict[str, Any]] = []
+    if sample_d.size < 2:
+        return features
+    dd = np.diff(sample_d)
+    grades = np.diff(sample_z) / np.maximum(dd, 1e-6) * 100.0
+    for i, grade in enumerate(grades):
+        if not np.isfinite(grade) or abs(float(grade)) <= max_grade_pct:
+            continue
+        d0 = float(sample_d[i])
+        d1 = float(sample_d[i + 1])
+        lon0 = float(np.interp(d0, dist, lons))
+        lat0 = float(np.interp(d0, dist, lats))
+        lon1 = float(np.interp(d1, dist, lons))
+        lat1 = float(np.interp(d1, dist, lats))
+        features.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "kind": "over-grade",
+                    "grade_pct": round(abs(float(grade)), 2),
+                    "limit_pct": max_grade_pct,
+                    "chainage_m": round(d0, 1),
+                    "length_m": round(d1 - d0, 1),
+                },
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[lon0, lat0], [lon1, lat1]],
+                },
+            }
+        )
+    return features
 
 
 def _profile_grades(dist: np.ndarray, elevs: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -79,61 +147,84 @@ def design_road(
     # A "stream" is a channel draining at least ~2 ha.
     cell_area = mx * my
     stream_cells = max(4.0, 20_000.0 / max(cell_area, 1e-6))
-    cost = _cost_surface(elev, slope_pct, acc, max_grade_pct, stream_cells)
-
-    from skimage.graph import route_through_array
-
-    cells: list[tuple[int, int]] = []
-    for a, b in zip(waypoints, waypoints[1:]):
-        start = _rowcol(dem, a[0], a[1])
-        end = _rowcol(dem, b[0], b[1])
-        try:
-            leg, _weight = route_through_array(
-                cost, start, end, fully_connected=True, geometric=True
-            )
-        except Exception as exc:
-            raise ValueError(
-                "No se encontró ruta entre los puntos (¿hay huecos sin datos en el DEM?)."
-            ) from exc
-        cells.extend(leg if not cells else leg[1:])
-
-    if len(cells) < 2:
-        raise ValueError("El trazo resultante es demasiado corto.")
-
-    rows = np.array([c[0] for c in cells])
-    cols = np.array([c[1] for c in cells])
-    xs, ys = xy(dem["transform"], rows, cols)
-    xs = np.asarray(xs, dtype=float)
-    ys = np.asarray(ys, dtype=float)
-    z = elev[rows, cols].astype(float)
 
     to_wgs = transformer_to_wgs84(dem["crs"])
-    if to_wgs is None:
-        lons, lats = xs, ys
-    else:
-        lons, lats = to_wgs.transform(xs, ys)
-    lons = np.asarray(lons, dtype=float)
-    lats = np.asarray(lats, dtype=float)
+    best: tuple[float, float, dict[str, Any]] | None = None
+    # Penaliza cada vez más las celdas más pendientes que el tope. Si aún así
+    # el perfil longitudinal se pasa, se entrega el mejor intento y se marca.
+    for over_penalty in (6.0, 25.0, 80.0):
+        cost = _cost_surface(
+            elev, slope_pct, acc, max_grade_pct, stream_cells, over_penalty
+        )
+        cells = _trace_cells(cost, dem, waypoints)
+        rows = np.array([c[0] for c in cells])
+        cols = np.array([c[1] for c in cells])
+        xs, ys = xy(dem["transform"], rows, cols)
+        xs = np.asarray(xs, dtype=float)
+        ys = np.asarray(ys, dtype=float)
+        z = elev[rows, cols].astype(float)
+        if to_wgs is None:
+            lons, lats = xs, ys
+        else:
+            lons, lats = to_wgs.transform(xs, ys)
+        lons = np.asarray(lons, dtype=float)
+        lats = np.asarray(lats, dtype=float)
 
-    # Segment lengths from cell steps (metres), independent of CRS units.
-    step_r = np.abs(np.diff(rows)) * my
-    step_c = np.abs(np.diff(cols)) * mx
-    seg2d = np.hypot(step_r, step_c)
-    dz = np.diff(z)
-    seg3d = np.hypot(seg2d, np.nan_to_num(dz))
-    dist = np.concatenate([[0.0], np.cumsum(seg2d)])
+        step_r = np.abs(np.diff(rows)) * my
+        step_c = np.abs(np.diff(cols)) * mx
+        seg2d = np.hypot(step_r, step_c)
+        dz = np.diff(z)
+        seg3d = np.hypot(seg2d, np.nan_to_num(dz))
+        dist = np.concatenate([[0.0], np.cumsum(seg2d)])
+        length_2d = float(dist[-1])
+        length_3d = float(np.nansum(seg3d))
 
-    length_2d = float(dist[-1])
-    length_3d = float(np.nansum(seg3d))
+        sample_d, sample_z = _profile_grades(dist, z)
+        grades = np.diff(sample_z) / np.maximum(np.diff(sample_d), 1e-6) * 100.0
+        grades = grades[np.isfinite(grades)]
+        over_len = (
+            float(np.sum(np.abs(grades) > max_grade_pct) * GRADE_STEP_M)
+            if grades.size
+            else 0.0
+        )
+        candidate = {
+            "rows": rows,
+            "cols": cols,
+            "z": z,
+            "lons": lons,
+            "lats": lats,
+            "seg2d": seg2d,
+            "dist": dist,
+            "length_2d": length_2d,
+            "length_3d": length_3d,
+            "sample_d": sample_d,
+            "sample_z": sample_z,
+            "grades": grades,
+            "over_len": over_len,
+        }
+        key = (over_len, length_3d)
+        if best is None or key < (best[0], best[1]):
+            best = (over_len, length_3d, candidate)
+        if over_len <= 0:
+            break
 
-    sample_d, sample_z = _profile_grades(dist, z)
-    grades = np.diff(sample_z) / np.maximum(np.diff(sample_d), 1e-6) * 100.0
-    grades = grades[np.isfinite(grades)]
+    assert best is not None
+    picked = best[2]
+    rows = picked["rows"]
+    cols = picked["cols"]
+    z = picked["z"]
+    lons = picked["lons"]
+    lats = picked["lats"]
+    seg2d = picked["seg2d"]
+    dist = picked["dist"]
+    length_2d = picked["length_2d"]
+    length_3d = picked["length_3d"]
+    sample_d = picked["sample_d"]
+    sample_z = picked["sample_z"]
+    grades = picked["grades"]
+    over_len = picked["over_len"]
     max_grade = float(np.max(np.abs(grades))) if grades.size else 0.0
     mean_grade = float(np.mean(np.abs(grades))) if grades.size else 0.0
-    over_len = (
-        float(np.sum(np.abs(grades) > max_grade_pct) * GRADE_STEP_M) if grades.size else 0.0
-    )
 
     # Balanced cut/fill bench on a side slope: A_cut = A_fill = W^2 * tan(theta) / 8.
     theta = np.arctan(np.clip(slope_pct[rows, cols], 0, 400) / 100.0)
@@ -187,10 +278,15 @@ def design_road(
                 "length_m": round(length_3d, 1),
                 "width_m": width_m,
                 "max_grade_pct": round(max_grade, 2),
+                "limit_grade_pct": max_grade_pct,
+                "over_grade_length_m": round(over_len, 1),
             },
             "geometry": {"type": "LineString", "coordinates": coords},
         }
     ]
+    features.extend(
+        _over_grade_features(dist, lons, lats, sample_d, sample_z, max_grade_pct)
+    )
     for i, crossing in enumerate(crossings, start=1):
         features.append(
             {
@@ -226,7 +322,13 @@ def design_road(
         "notes": (
             "Ruta de menor costo sobre pendiente del terreno, penalizando cauces. "
             "Movimiento de tierra = sección balanceada W²·tanθ/8. "
-            "Precios de referencia, no cotización ni diseño geométrico vial."
+            "Precios de referencia, no cotización ni diseño geométrico vial. "
+            + (
+                f"{over_len:.0f} m del perfil superan el tope de {max_grade_pct:g}% "
+                "(tramos over-grade en el GeoJSON)."
+                if over_len > 0
+                else f"Pendiente longitudinal dentro de {max_grade_pct:g}%."
+            )
         ),
     }
 

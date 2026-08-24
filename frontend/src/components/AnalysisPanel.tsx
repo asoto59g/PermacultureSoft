@@ -1,7 +1,7 @@
 "use client";
 
-import type { LegendItem, RasterOverlay } from "@/lib/types";
-import type { SurfaceMapType } from "@/lib/api";
+import type { LegendItem, RasterOverlay, SoilProfile } from "@/lib/types";
+import type { SoilMapType, SurfaceMapType } from "@/lib/api";
 
 type Props = {
   hasDem: boolean;
@@ -27,6 +27,7 @@ type Props = {
   onSolarDay: (v: number) => void;
   onSolarHour: (v: number) => void;
   onSolarRebuild: () => void;
+  onSoilMap: (kind: SoilMapType) => void;
   siteMaxSlopePct: number;
   sitePadM: number;
   onSiteSlope: (v: number) => void;
@@ -48,6 +49,13 @@ const MAPS: { id: SurfaceMapType; label: string }[] = [
   { id: "elevation", label: "Elevation" },
   { id: "drainage", label: "Drainage" },
   { id: "wetness", label: "Wetness" },
+];
+
+const SOIL_MAPS: { id: SoilMapType; label: string }[] = [
+  { id: "texture", label: "Textura" },
+  { id: "ph", label: "pH" },
+  { id: "om", label: "Materia orgánica" },
+  { id: "awc", label: "Agua disponible" },
 ];
 
 export function AnalysisPanel({
@@ -74,6 +82,7 @@ export function AnalysisPanel({
   onSolarDay,
   onSolarHour,
   onSolarRebuild,
+  onSoilMap,
   siteMaxSlopePct,
   sitePadM,
   onSiteSlope,
@@ -278,6 +287,29 @@ export function AnalysisPanel({
 
       <div className="mb-3 border-t border-zinc-800 pt-3">
         <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
+          Suelos
+        </p>
+        <p className="mb-2 text-[11px] text-zinc-400">
+          SoilGrids 250 m, mismas variables que CLIMCOW. No sustituye calicata.
+        </p>
+        <div className="mb-2 grid grid-cols-2 gap-1">
+          {SOIL_MAPS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              disabled={!hasDem || loading}
+              onClick={() => onSoilMap(m.id)}
+              className="rounded bg-zinc-800 px-2 py-1 text-[11px] text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {overlay?.profile && <SoilProfileBlock profile={overlay.profile} notes={overlay.notes} />}
+      </div>
+
+      <div className="mb-3 border-t border-zinc-800 pt-3">
+        <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
           Aptitud de edificación
         </p>
         <label className="mb-2 block">
@@ -357,7 +389,8 @@ export function AnalysisPanel({
           />
         </label>
         <p className="mb-2 text-[11px] leading-snug text-zinc-400">
-          El trazo es de menor costo: origen y destino (o más puntos) y Enter.
+          El trazo busca no pasar el tope. Si el terreno no permite, el tramo
+          queda en rojo y se listan los metros fuera de norma.
         </p>
         <button
           type="button"
@@ -423,6 +456,32 @@ export function AnalysisPanel({
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+function SoilProfileBlock({
+  profile,
+  notes,
+}: {
+  profile: SoilProfile;
+  notes?: string | null;
+}) {
+  const n = (v: number | null | undefined, unit: string) =>
+    v == null ? "—" : `${v} ${unit}`;
+  return (
+    <div className="space-y-1 text-[11px] text-zinc-400">
+      <p>
+        Textura <span className="text-zinc-200">{profile.texture}</span>
+      </p>
+      <p className="font-mono text-[10px]">
+        Arcilla {n(profile.clay_pct, "%")} · Arena {n(profile.sand_pct, "%")} · Limo{" "}
+        {n(profile.silt_pct, "%")}
+      </p>
+      <p className="font-mono text-[10px]">
+        MO {n(profile.om_pct, "%")} · pH {profile.ph ?? "—"} · AWC {n(profile.awc_mm, "mm")}
+      </p>
+      {notes && <p className="text-[10px] leading-snug text-zinc-500">{notes}</p>}
     </div>
   );
 }

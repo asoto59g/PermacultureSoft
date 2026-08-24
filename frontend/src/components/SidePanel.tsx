@@ -1,6 +1,14 @@
 "use client";
 
-import type { BoqLine, DemInfo, PipeFeature, RoadFeature } from "@/lib/types";
+import type {
+  DemInfo,
+  FenceFeature,
+  FencePurpose,
+  PipeFeature,
+  RoadFeature,
+} from "@/lib/types";
+import { FENCE_PURPOSES, FENCE_SPECIES } from "@/lib/fences";
+import { downloadBoqCsv, type AggregatedBoq } from "@/lib/economy";
 
 type Props = {
   dem: DemInfo | null;
@@ -14,11 +22,18 @@ type Props = {
   pipeFlowLs: number;
   roadMaxGradePct: number;
   roadWidthM: number;
+  fenceSpecies: string;
+  fenceSpacingM: number;
+  fenceRows: number;
+  fencePurpose: FencePurpose;
   loading: boolean;
   error: string | null;
   pipes: PipeFeature[];
   roads: RoadFeature[];
-  boq: { rows: BoqLine[]; costRefUsd: number };
+  fences: FenceFeature[];
+  boq: AggregatedBoq;
+  onPrice: (key: string, unitPrice: number) => void;
+  onResetPrices: () => void;
   onInterval: (v: number) => void;
   onKeylineOffset: (v: number) => void;
   onKeylineCount: (v: number) => void;
@@ -29,6 +44,11 @@ type Props = {
   onPipeFlow: (v: number) => void;
   onRoadGrade: (v: number) => void;
   onRoadWidth: (v: number) => void;
+  onFenceSpecies: (v: string) => void;
+  onFenceSpacing: (v: number) => void;
+  onFenceRows: (v: number) => void;
+  onFencePurpose: (v: FencePurpose) => void;
+  onFencePerimeter: () => void;
   onUpload: (file: File) => void;
   onClimate: () => void;
   climateOpen: boolean;
@@ -69,11 +89,18 @@ export function SidePanel({
   pipeFlowLs,
   roadMaxGradePct,
   roadWidthM,
+  fenceSpecies,
+  fenceSpacingM,
+  fenceRows,
+  fencePurpose,
   loading,
   error,
   pipes,
   roads,
+  fences,
   boq,
+  onPrice,
+  onResetPrices,
   onInterval,
   onKeylineOffset,
   onKeylineCount,
@@ -84,6 +111,11 @@ export function SidePanel({
   onPipeFlow,
   onRoadGrade,
   onRoadWidth,
+  onFenceSpecies,
+  onFenceSpacing,
+  onFenceRows,
+  onFencePurpose,
+  onFencePerimeter,
   onUpload,
   onClimate,
   climateOpen,
@@ -335,6 +367,10 @@ export function SidePanel({
             className="w-full accent-yellow-500"
           />
         </label>
+        <p className="mb-2 text-[10px] leading-snug text-zinc-500">
+          Tope de diseño. Si el terreno no da, el tramo queda en rojo y se
+          reportan los metros fuera de norma.
+        </p>
         <label className="block">
           <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
             <span>Ancho de calzada</span>
@@ -352,6 +388,82 @@ export function SidePanel({
         </label>
       </div>
 
+      <div className="rounded border border-zinc-800 p-2">
+        <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
+          Cerca viva
+        </p>
+        <label className="mb-2 block">
+          <span className="mb-1 block text-[10px] text-zinc-500">Especie</span>
+          <select
+            value={fenceSpecies}
+            onChange={(e) => onFenceSpecies(e.target.value)}
+            className="w-full rounded bg-zinc-900 px-2 py-1 text-[11px]"
+          >
+            {FENCE_SPECIES.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="mb-2 block">
+          <span className="mb-1 block text-[10px] text-zinc-500">Función</span>
+          <select
+            value={fencePurpose}
+            onChange={(e) => onFencePurpose(e.target.value as FencePurpose)}
+            className="w-full rounded bg-zinc-900 px-2 py-1 text-[11px]"
+          >
+            {FENCE_PURPOSES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="mb-2 block">
+          <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
+            <span>Espaciamiento</span>
+            <span>{fenceSpacingM.toFixed(2)} m</span>
+          </span>
+          <input
+            type="range"
+            min={0.25}
+            max={3}
+            step={0.25}
+            value={fenceSpacingM}
+            onChange={(e) => onFenceSpacing(Number(e.target.value))}
+            className="w-full accent-lime-500"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
+            <span>Hileras</span>
+            <span>{fenceRows}</span>
+          </span>
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={1}
+            value={fenceRows}
+            onChange={(e) => onFenceRows(Number(e.target.value))}
+            className="w-full accent-lime-500"
+          />
+        </label>
+        <p className="mt-2 text-[10px] leading-snug text-zinc-500">
+          Click vértices, Enter para plantar. Corta-vientos usa al menos 2
+          hileras. Precios de estaca, no cotización.
+        </p>
+        <button
+          type="button"
+          disabled={!dem || loading}
+          onClick={onFencePerimeter}
+          className="mt-2 w-full rounded bg-lime-900 px-2 py-1.5 text-[11px] text-white hover:bg-lime-800 disabled:opacity-40"
+        >
+          Cercar perímetro del DEM
+        </button>
+      </div>
+
       {dem && (
         <div className="rounded border border-zinc-800 bg-zinc-900/60 p-2 text-[11px] text-zinc-400">
           <div className="truncate text-zinc-200">{dem.label}</div>
@@ -362,10 +474,10 @@ export function SidePanel({
         </div>
       )}
 
-      {(pipes.length > 0 || roads.length > 0) && (
+      {(pipes.length > 0 || roads.length > 0 || fences.length > 0 || boq.rows.length > 0) && (
         <div>
           <h3 className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">
-            Obra · BoQ (USD ref.)
+            9 · Economía · BoQ (USD ref.)
           </h3>
           <ul className="mb-2 space-y-1">
             {pipes.map((p) => (
@@ -381,38 +493,118 @@ export function SidePanel({
             {roads.map((r) => (
               <li
                 key={r.id}
-                className="rounded border border-yellow-900/50 bg-yellow-950/30 px-2 py-1 text-yellow-200"
+                className={`rounded border px-2 py-1 ${
+                  r.overGradeM > 0
+                    ? "border-rose-800 bg-rose-950/40 text-rose-200"
+                    : "border-yellow-900/50 bg-yellow-950/30 text-yellow-200"
+                }`}
               >
                 Camino {r.lengthM.toFixed(0)} m · media {r.meanGradePct}% máx{" "}
                 {r.maxGradePct}%
                 {r.overGradeM > 0 && (
-                  <span className="text-rose-300"> · {r.overGradeM} m sobre límite</span>
+                  <span className="font-medium">
+                    {" "}
+                    · {r.overGradeM} m sobre {r.limitGradePct ?? 12}%
+                  </span>
                 )}
                 <span className="block text-[10px] text-yellow-400/80">
                   {r.cutFillM3.toFixed(0)} m³ movimiento · {r.culverts} alcantarilla(s)
                 </span>
               </li>
             ))}
+            {fences.map((f) => (
+              <li
+                key={f.id}
+                className={`rounded border px-2 py-1 ${
+                  f.steepLengthM > 0
+                    ? "border-rose-800 bg-rose-950/40 text-rose-200"
+                    : "border-lime-900/50 bg-lime-950/30 text-lime-200"
+                }`}
+              >
+                {f.speciesName.split("(")[0].trim()} · {f.lengthM.toFixed(0)} m ·{" "}
+                {f.plantCount} plantas
+                {f.steepLengthM > 0 && (
+                  <span className="block text-[10px]">
+                    {f.steepLengthM} m sobre {f.steepLimitPct}%
+                  </span>
+                )}
+              </li>
+            ))}
           </ul>
           {boq.rows.length > 0 && (
-            <table className="w-full text-[10px] text-zinc-300">
-              <tbody>
-                {boq.rows.map((r) => (
-                  <tr key={r.item} className="border-t border-zinc-800">
-                    <td className="py-0.5 pr-1">{r.item}</td>
-                    <td className="py-0.5 text-right font-mono">
-                      {r.qty} {r.unit}
-                    </td>
-                    <td className="py-0.5 text-right font-mono">${r.total.toFixed(0)}</td>
+            <>
+              <p className="mb-1 grid grid-cols-3 gap-1 text-[10px] text-zinc-500">
+                <span>Agua ${boq.byCategory.water.toFixed(0)}</span>
+                <span>Acceso ${boq.byCategory.access.toFixed(0)}</span>
+                <span>Cercas ${boq.byCategory.fences.toFixed(0)}</span>
+              </p>
+              <table className="w-full text-[10px] text-zinc-300">
+                <tbody>
+                  {boq.rows.map((r) => (
+                    <tr key={r.key} className="border-t border-zinc-800">
+                      <td className="py-0.5 pr-1">
+                        {r.item}
+                        <span className="block font-mono text-zinc-500">
+                          {r.qty} {r.unit}
+                        </span>
+                      </td>
+                      <td className="py-0.5 text-right">
+                        <label className="inline-flex items-center gap-0.5">
+                          <span className="text-zinc-600">$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.05}
+                            value={r.unit_price}
+                            onChange={(e) =>
+                              onPrice(r.key, Math.max(0, Number(e.target.value) || 0))
+                            }
+                            className={`w-14 rounded bg-zinc-900 px-1 py-0.5 text-right font-mono ${
+                              r.edited ? "text-amber-300" : "text-zinc-200"
+                            }`}
+                          />
+                        </label>
+                      </td>
+                      <td className="py-0.5 text-right font-mono">${r.total.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t border-zinc-700 font-semibold text-emerald-300">
+                    <td className="py-1">Total ref.</td>
+                    <td />
+                    <td className="py-1 text-right font-mono">${boq.costRefUsd.toFixed(0)}</td>
                   </tr>
-                ))}
-                <tr className="border-t border-zinc-700 font-semibold text-emerald-300">
-                  <td className="py-1">Total ref.</td>
-                  <td />
-                  <td className="py-1 text-right font-mono">${boq.costRefUsd.toFixed(0)}</td>
-                </tr>
-              </tbody>
-            </table>
+                  {boq.usdPerHa != null && (
+                    <tr className="text-zinc-400">
+                      <td className="py-0.5">USD / ha</td>
+                      <td />
+                      <td className="py-0.5 text-right font-mono">
+                        ${boq.usdPerHa.toFixed(0)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="mt-1 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => downloadBoqCsv(boq, dem?.label || "proyecto")}
+                  className="rounded bg-zinc-800 px-2 py-1 text-[10px] hover:bg-zinc-700"
+                >
+                  Exportar CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={onResetPrices}
+                  className="rounded bg-zinc-800 px-2 py-1 text-[10px] hover:bg-zinc-700"
+                >
+                  Precios de código
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] leading-snug text-zinc-500">
+                Edita el precio unitario para tu mercado. No es cotización: sin
+                flete, imprevistos ni rendimiento de cuadrilla.
+              </p>
+            </>
           )}
         </div>
       )}
