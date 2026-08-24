@@ -10,6 +10,7 @@ import {
   fetchDamSuitability,
   fetchPressureField,
   fetchSoilMap,
+  fetchSolarAnnual,
   fetchSolarMap,
   fetchSurfaceMap,
   generateKeyline,
@@ -1373,6 +1374,42 @@ export function useProject() {
     }
   }, [state.dem, state.solarDay, state.solarHour, state.resamplePct, state.gaussianSigma]);
 
+  const runSolarAnnual = useCallback(async () => {
+    if (!state.dem) return;
+    dispatch({ type: "SET_LOADING", loading: true });
+    dispatch({ type: "SET_ERROR", error: null });
+    dispatch({
+      type: "SET_STATUS",
+      message: "Calculando insolación anual (cielo despejado)…",
+    });
+    try {
+      const result = await fetchSolarAnnual(
+        state.dem.demId,
+        state.resamplePct,
+        state.gaussianSigma
+      );
+      applyOverlay("solar-annual", "Energía · insolación anual", "energy", result, dispatch);
+      const a = result.annual;
+      if (a) {
+        const vs =
+          a.ratio_vs_horizontal != null
+            ? ` · ${Math.round(a.ratio_vs_horizontal * 100)}% vs plano`
+            : "";
+        dispatch({
+          type: "SET_STATUS",
+          message: `Insolación anual · media ${a.mean_kwh_m2} kWh/m²${vs} (cielo despejado)`,
+        });
+      }
+    } catch (err) {
+      dispatch({
+        type: "SET_ERROR",
+        error: err instanceof Error ? err.message : "Error de insolación anual",
+      });
+    } finally {
+      dispatch({ type: "SET_LOADING", loading: false });
+    }
+  }, [state.dem, state.resamplePct, state.gaussianSigma]);
+
   const runSoilMap = useCallback(
     async (mapType: SoilMapType) => {
       if (!state.dem) return;
@@ -1425,6 +1462,10 @@ export function useProject() {
       await runSolar();
       return;
     }
+    if (id === "solar-annual") {
+      await runSolarAnnual();
+      return;
+    }
     if (id === "building-sites") {
       await runBuildingSites();
       return;
@@ -1439,6 +1480,7 @@ export function useProject() {
     rebuildPressure,
     runDamSuitability,
     runSolar,
+    runSolarAnnual,
     runBuildingSites,
     runSoilMap,
   ]);
@@ -1616,6 +1658,7 @@ export function useProject() {
     rebuildPressure,
     rebuildActiveOverlay,
     runSolar,
+    runSolarAnnual,
     runBuildingSites,
     runSoilMap,
     connectSiteRoads,
@@ -1668,6 +1711,7 @@ function applyOverlay(
     geojson: result.geojson ?? null,
     profile: result.profile ?? null,
     notes: result.notes ?? null,
+    annual: result.annual ?? null,
   };
   dispatch({
     type: "UPSERT_LAYER",
@@ -1700,6 +1744,7 @@ type OverlayResponseLike = {
   geojson?: RasterOverlay["geojson"];
   profile?: SoilProfile | null;
   notes?: string | null;
+  annual?: RasterOverlay["annual"];
 };
 
 function summarizeKeyline(geojson: FeatureCollection): { label: string; message: string } {

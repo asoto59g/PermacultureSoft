@@ -1,4 +1,4 @@
-import type { FeatureCollection, SoilProfile, UploadDemResponse } from "./types";
+import type { FeatureCollection, SoilProfile, SolarAnnualStats, UploadDemResponse } from "./types";
 
 /** Same-origin via Next rewrite → FastAPI. */
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -360,6 +360,24 @@ export async function fetchSolarMap(
   return response.json();
 }
 
+export async function fetchSolarAnnual(
+  demId: string,
+  resamplePct: number,
+  gaussianSigma: number
+): Promise<OverlayResponse> {
+  const response = await apiFetch("/api/climate/solar-annual/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dem_id: demId,
+      resample_pct: resamplePct,
+      gaussian_sigma: gaussianSigma,
+    }),
+  });
+  if (!response.ok) throw new Error(await readError(response));
+  return response.json();
+}
+
 export { API_URL };
 
 export type SurfaceMapType =
@@ -381,6 +399,7 @@ export interface OverlayResponse {
   geojson?: FeatureCollection | null;
   profile?: SoilProfile | null;
   notes?: string | null;
+  annual?: SolarAnnualStats | null;
 }
 
 export async function fetchSoilMap(

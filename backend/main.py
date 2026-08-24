@@ -35,7 +35,7 @@ from hydrology import (  # noqa: E402
     hydro_surface_map,
 )
 from pipes import aggregate_boq, design_pipe  # noqa: E402
-from solar import solar_shade_map  # noqa: E402
+from solar import solar_annual_map, solar_shade_map  # noqa: E402
 from soils import render_soil_map  # noqa: E402
 from surfaces import render_surface_map  # noqa: E402
 
@@ -496,6 +496,31 @@ async def solar_map(req: SolarRequest):
             req.gaussian_sigma,
         )
         return {"status": "success", **result}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+class SolarAnnualRequest(BaseModel):
+    dem_id: str
+    resample_pct: float = 40
+    gaussian_sigma: float = 0.0
+    hour_step: float = Field(default=1.0, ge=0.5, le=3.0)
+
+
+@app.post("/api/climate/solar-annual")
+@app.post("/api/climate/solar-annual/")
+async def solar_annual(req: SolarAnnualRequest):
+    path = _dem_path(req.dem_id)
+    try:
+        result = solar_annual_map(
+            str(path),
+            req.resample_pct,
+            req.gaussian_sigma,
+            req.hour_step,
+        )
+        return {"status": "success", **result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

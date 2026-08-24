@@ -1,4 +1,4 @@
-"""Pruebas HTTP del backend: DEM sintético, cuenca, keyline (ICL) y camino.
+"""Pruebas HTTP del backend: DEM sintético, cuenca, keyline, camino, suelos, cercas e insolación anual.
 
 Desde backend/:
 
@@ -228,6 +228,27 @@ def test_living_fence_needs_two_points(api: TestClient, dem: dict[str, Any]) -> 
         json={"dem_id": dem["id"], "vertices": [[lon1, lat1]]},
     )
     assert response.status_code == 400
+
+
+def test_solar_annual_map(api: TestClient, dem: dict[str, Any]) -> None:
+    response = api.post(
+        "/api/climate/solar-annual/",
+        json={
+            "dem_id": dem["id"],
+            "resample_pct": 50,
+            "gaussian_sigma": 0,
+            "hour_step": 2.0,
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["image_png_base64"]
+    annual = body["annual"]
+    assert annual["mean_kwh_m2"] > 0
+    assert annual["max_kwh_m2"] >= annual["min_kwh_m2"]
+    assert annual["days_sampled"] == 12
+    assert annual["hours_sampled"] > 0
 
 
 def test_sample_dem_uploads(api: TestClient) -> None:

@@ -197,6 +197,15 @@ export interface RasterOverlay {
   geojson?: FeatureCollection | null;
   profile?: SoilProfile | null;
   notes?: string | null;
+  annual?: SolarAnnualStats | null;
+}
+
+export interface SolarAnnualStats {
+  mean_kwh_m2: number;
+  min_kwh_m2: number;
+  max_kwh_m2: number;
+  horizontal_kwh_m2: number;
+  ratio_vs_horizontal: number | null;
 }
 
 export interface UploadDemResponse {

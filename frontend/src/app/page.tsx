@@ -50,6 +50,7 @@ export default function Home() {
     rebuildPressure,
     rebuildActiveOverlay,
     runSolar,
+    runSolarAnnual,
     runBuildingSites,
     runSoilMap,
     connectSiteRoads,
@@ -242,6 +243,11 @@ export default function Home() {
             onSolarDay={(v) => dispatch({ type: "SET_SOLAR_DAY", day: v })}
             onSolarHour={(v) => dispatch({ type: "SET_SOLAR_HOUR", hour: v })}
             onSolarRebuild={runSolar}
+            onSolarAnnual={runSolarAnnual}
+            onSolarParamsReleased={() => {
+              if (state.overlayId === "solar-annual") return;
+              void rebuildActiveOverlay();
+            }}
             onSoilMap={runSoilMap}
             siteMaxSlopePct={state.siteMaxSlopePct}
             sitePadM={state.sitePadM}

@@ -202,7 +202,7 @@ flowchart TB
 
 | Puerto | Proceso | Rol |
 | --- | --- | --- |
-| `127.0.0.1:8000` | FastAPI | DEM, curvas, agua, caminos, sitios, sombra |
+| `127.0.0.1:8000` | FastAPI | DEM, curvas, agua, caminos, sitios, suelos, sombra e insolación |
 | `127.0.0.1:3000` | Next.js | Interfaz, clima, y reenvío del resto a :8000 |
 
 Solo escuchan en esta máquina. No se publican a la red.

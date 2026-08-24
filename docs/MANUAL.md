@@ -52,7 +52,8 @@ La pantalla tiene cuatro zonas:
 - **Barra superior del mapa.** Las herramientas. Las que necesitan DEM aparecen
   desactivadas hasta que se cargue uno.
 - **Panel derecho.** Análisis de superficies: mapas derivados, presión por
-  gravedad, aptitud de embalse, sombra solar y aptitud de edificación.
+  gravedad, aptitud de embalse, sombra e insolación anual, suelos y aptitud de
+  edificación.
 - **Barra inferior.** Coordenadas, cota bajo el cursor, zoom y mensajes de
   estado. El mensaje de estado indica qué espera la herramienta activa.
 
@@ -334,13 +335,28 @@ calicata ni un análisis de laboratorio.
 
 ### 3.10 · Energía
 
-Sección *Solar / sombra*. Fija el *Día del año* (1 a 365) y la *Hora local*, y
-pulsa **Rebuild sombra**. El mapa muestra qué está iluminado y qué en sombra en
-ese instante.
+Sección *Energía · sol* a la derecha. La capa queda en el árbol bajo
+**10 · ENERGY**.
 
-Los momentos que vale la pena revisar son los solsticios a primera y última hora:
-día 172 y día 355 hacia las 8:00 y las 16:00. Es cuando la sombra es máxima y
-donde se decide la ubicación de paneles, invernaderos y frutales exigentes.
+**Sombra instantánea.** Fija el *Día del año* (1 a 365) y la *Hora local*, y
+pulsa **Rebuild sombra**. El mapa muestra qué está iluminado y qué en sombra en
+ese instante. Los momentos que vale la pena revisar son los solsticios a
+primera y última hora: día 172 y día 355 hacia las 8:00 y las 16:00. Es cuando
+la sombra es máxima y donde se decide la ubicación de paneles, invernaderos y
+frutales exigentes.
+
+**Mapa anual.** **Mapa anual** integra un día a mediados de cada mes (12 días)
+y las horas diurnas (aprox. 6:00–18:00). En cada hora combina incidencia en la
+ladera (`hillshade`) con sombra de relieve. Unidades: **kWh/m²·año** de haz
+directo con cielo despejado (constante solar 1361 W/m² × transmitancia 0,70).
+La leyenda y el resumen (media, mín, máx, % vs un plano horizontal en el mismo
+sitio) sirven para zonificar: qué ladera recibe más sol a lo largo del año.
+PNG y GeoTIFF se bajan desde la leyenda.
+
+No incluye nubes, albedo ni radiación difusa. La radiación de malla (ERA5) sigue
+en *Clima del sitio*. El mapa anual compara caras del relieve; no dimensiona un
+sistema fotovoltaico. El cálculo tarda unos segundos: mover día u hora no lo
+recalcula; cambiar el remuestreo sí.
 
 ---
 

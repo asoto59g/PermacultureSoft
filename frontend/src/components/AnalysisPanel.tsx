@@ -27,6 +27,8 @@ type Props = {
   onSolarDay: (v: number) => void;
   onSolarHour: (v: number) => void;
   onSolarRebuild: () => void;
+  onSolarAnnual: () => void;
+  onSolarParamsReleased: () => void;
   onSoilMap: (kind: SoilMapType) => void;
   siteMaxSlopePct: number;
   sitePadM: number;
@@ -82,6 +84,8 @@ export function AnalysisPanel({
   onSolarDay,
   onSolarHour,
   onSolarRebuild,
+  onSolarAnnual,
+  onSolarParamsReleased,
   onSoilMap,
   siteMaxSlopePct,
   sitePadM,
@@ -241,7 +245,7 @@ export function AnalysisPanel({
 
       <div className="mb-3 border-t border-zinc-800 pt-3">
         <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
-          Solar / sombra
+          Energía · sol
         </p>
         <label className="mb-2 block">
           <span className="mb-1 flex justify-between text-[10px] text-zinc-500">
@@ -255,7 +259,7 @@ export function AnalysisPanel({
             step={1}
             value={solarDay}
             onChange={(e) => onSolarDay(Number(e.target.value))}
-            onPointerUp={onParamsReleased}
+            onPointerUp={onSolarParamsReleased}
             className="w-full accent-amber-400"
           />
         </label>
@@ -271,7 +275,7 @@ export function AnalysisPanel({
             step={0.5}
             value={solarHour}
             onChange={(e) => onSolarHour(Number(e.target.value))}
-            onPointerUp={onParamsReleased}
+            onPointerUp={onSolarParamsReleased}
             className="w-full accent-amber-400"
           />
         </label>
@@ -279,10 +283,32 @@ export function AnalysisPanel({
           type="button"
           disabled={!hasDem || loading}
           onClick={onSolarRebuild}
-          className="w-full rounded bg-amber-800 px-2 py-1.5 text-[11px] text-white hover:bg-amber-700 disabled:opacity-40"
+          className="mb-1 w-full rounded bg-amber-800 px-2 py-1.5 text-[11px] text-white hover:bg-amber-700 disabled:opacity-40"
         >
           Rebuild sombra
         </button>
+        <button
+          type="button"
+          disabled={!hasDem || loading}
+          onClick={onSolarAnnual}
+          className="w-full rounded bg-amber-950 px-2 py-1.5 text-[11px] text-amber-100 hover:bg-amber-900 disabled:opacity-40"
+        >
+          Mapa anual
+        </button>
+        {overlay?.annual && (
+          <div className="mt-2 space-y-1 text-[11px] text-zinc-400">
+            <p className="font-mono text-[10px]">
+              Media {overlay.annual.mean_kwh_m2} kWh/m²·año · {overlay.annual.min_kwh_m2}–
+              {overlay.annual.max_kwh_m2}
+              {overlay.annual.ratio_vs_horizontal != null
+                ? ` · ${Math.round(overlay.annual.ratio_vs_horizontal * 100)}% vs plano`
+                : ""}
+            </p>
+            {overlay.notes && (
+              <p className="text-[10px] leading-snug text-zinc-500">{overlay.notes}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mb-3 border-t border-zinc-800 pt-3">

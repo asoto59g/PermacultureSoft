@@ -27,13 +27,13 @@ flowchart TD
   F --> G[Acceso: camino]
   G --> H[Ecosistemas: keyline]
   H --> I[Edificaciones: sitios]
-  I --> J[Energía: sombra]
+  I --> J[Energía: sombra e insolación anual]
   J --> K[Presupuesto y guardar]
 ```
 
 El orden no es caprichoso: clima y relieve condicionan el agua; el agua
-condiciona caminos y plataformas; la sombra se revisa al final, cuando ya hay
-sitios candidatos.
+condiciona caminos y plataformas; la sombra y el mapa anual se revisan al
+final, cuando ya hay sitios candidatos.
 
 ---
 
@@ -73,7 +73,7 @@ Cuatro zonas, de izquierda a derecha:
 3. **Mapa.** Satélite por defecto. *Calles / Oscuro / Satélite / Topo* cambian
    el fondo. *Hillshade / terrain* añade relieve global para ubicarse.
 4. **Panel derecho.** Análisis que se *reconstruyen* sobre el DEM: mapas
-   derivados, presión, embalse, sombra, sitios.
+   derivados, presión, embalse, sombra, insolación anual, suelos, sitios.
 
 La barra inferior muestra coordenadas, cota bajo el cursor y el mensaje de
 estado: ahí se lee qué espera la herramienta activa («click en el aforo»,
@@ -243,7 +243,7 @@ la estaca, con cota.»*
 
 ---
 
-## Escena 8 · Sitios y sombra
+## Escena 8 · Sitios, sombra e insolación
 
 **Sitios.** *Pendiente máx.* y *Plataforma mínima* a la derecha. **Buscar
 sitios**. Hasta ocho candidatos, de *Poor* a *Excellent*. Cruza el mapa
@@ -254,9 +254,13 @@ sirve.
 sombra). **Rebuild sombra**. Decide paneles, invernadero y frutales
 exigentes *después* de tener candidatos de plataforma.
 
+**Insolación anual.** **Mapa anual**. Contrasta ladera norte / sur y
+fondo de valle. La cifra es cielo despejado, no nubes: para el dato de
+malla mira Clima del sitio.
+
 **Narración sugerida.** *«Primero dónde se puede construir. Después, a
-qué hora se queda sin sol. Al revés se diseña un galerón en la sombra
-equivocada.»*
+qué hora se queda sin sol. El mapa anual dice qué ladera trabaja más
+horas al año; no cotiza paneles.»*
 
 ---
 
@@ -350,7 +354,7 @@ el nombre del botón que se pulsa.
 | 7:30 | Agua | Cuenca, embalse, presión, un tramo de tubería | Aforo en el cauce; 10 m ≈ 1 bar |
 | 9:30 | Camino | Dos clics, Enter, hover en alcantarilla | Mirar metros fuera de norma |
 | 10:30 | Keyline | Drainage + 1:n o Madre, hover ICL | Keypoint; verde a campo, blanco = estaca |
-| 11:20 | Sitios y sol | Buscar sitios + sombra solsticio | Primero plataforma, después sombra |
+| 11:20 | Sitios y sol | Buscar sitios + sombra solsticio + mapa anual | Primero plataforma, después sombra e insolación |
 | 12:30 | Cierre | Tabla de presupuesto, Exportar JSON, Detener | Comparar, no cotizar; apagar en la ventana de control |
 | 13:30 | Límites | Campo / DEM de mala calidad (opcional) | Contraste con estación y topografía de detalle |
 

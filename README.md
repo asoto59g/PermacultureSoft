@@ -18,8 +18,8 @@ SIG web para diseño de paisaje en permacultura. Se sube un modelo digital de
 elevación (DEM) de la finca y la plataforma deriva de él todo lo que depende del
 terreno: cuencas y drenaje, presión de agua por gravedad, sitios de embalse,
 keylines, redes de tubería con presupuesto, trazo de caminos de menor costo,
-aptitud de edificación, cercas vivas, mapas de suelo, sombra solar y series
-climáticas del sitio.
+aptitud de edificación, cercas vivas, mapas de suelo, sombra e insolación
+anual, y series climáticas del sitio.
 
 > Herramienta de **prefactibilidad**. Los cálculos hidráulicos, de movimiento de
 > tierra y de costos son órdenes de magnitud para comparar alternativas. No
@@ -41,7 +41,7 @@ climáticas del sitio.
 | 7 · Cercas | Cerca viva: trazo, especies (madero negro, poró, leucaena…), plantas a espaciamiento y BoQ de estacas |
 | 8 · Suelos | Mapas de textura, pH, materia orgánica y agua disponible (SoilGrids 250 m, mismas reglas que CLIMCOW) |
 | 9 · Economía | Presupuesto agregado de tubería, caminos y cercas vivas, precios unitarios editables, USD/ha y export CSV |
-| 10 · Energía | Mapa de sombra e insolación por día y hora |
+| 10 · Energía | Sombra por día y hora, e insolación anual de cielo despejado (kWh/m²·año) para zonificar laderas |
 
 ### Detalle de los módulos
 
@@ -93,6 +93,12 @@ calicata ni laboratorio.
 pueden editar y se guardan con el proyecto; el total y el USD/ha salen al vuelo.
 **Exportar CSV** baja la tabla. Sigue siendo orden de magnitud, no cotización.
 
+**Energía.** *Rebuild sombra* es un instante (día y hora). *Mapa anual* integra
+12 días y las horas con sol: incidencia en ladera y sombra de relieve, en
+kWh/m²·año de haz directo con cielo despejado. No incluye nubes (eso está en
+Clima del sitio, ERA5) ni cotiza paneles: sirve para comparar caras del
+relieve.
+
 ---
 
 ## Arquitectura
@@ -109,7 +115,7 @@ PermacultureSoft/
 │   ├── ecosystems.py   keylines (contorno, offset, madre)
 │   ├── keyline_diag.py ICL, corte en drenajes, replanteo
 │   ├── pipes.py        hidráulica y presupuesto
-│   ├── solar.py        posición solar y sombra
+│   ├── solar.py        posición solar, sombra e insolación anual
 │   ├── soils.py        textura, pH, MO y AWC (SoilGrids / CLIMCOW)
 │   ├── fences.py       cercas vivas, plantas y BoQ de estacas
 │   ├── crsutil.py      normalización de sistemas de coordenadas
@@ -290,6 +296,11 @@ ninguna herramienta que dependa del DEM se habilita.
 Ninguna requiere clave de API. Todas son mallas de satélite o reanálisis, no
 estaciones meteorológicas: sirven como insumo de prefactibilidad, no como
 registro observado del sitio.
+
+Los mapas de **sombra** e **insolación anual** no bajan radiación de malla:
+se calculan sobre el DEM (posición solar tipo NOAA, haz directo, cielo
+despejado). La radiación de ERA5 en *Clima del sitio* sí incluye nubes, a
+escala de reanálisis.
 
 ---
 
