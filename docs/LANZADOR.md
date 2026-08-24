@@ -25,7 +25,7 @@ flowchart LR
 
 | Momento | Windows | Linux | macOS |
 | --- | --- | --- | --- |
-| **Una vez** (o tras `git pull`) | `scripts\Instalar.cmd` | `scripts/install.sh` o `Instalar.desktop` | `scripts/Instalar.command` |
+| **Una vez** (o tras `git pull`) | `Instalar.cmd` (si OneDrive: `InstalarLimpio.cmd`) | `scripts/install.sh` o `Instalar.desktop` | `scripts/Instalar.command` |
 | **Cada día** | Acceso del escritorio o `PermacultureSoft.vbs` | Acceso del escritorio o `PermacultureSoft.desktop` | Acceso del escritorio o `PermacultureSoft.command` |
 
 No hace falta pulsar dos archivos el primer día: el instalador lanza solo
@@ -249,7 +249,9 @@ Otra vez el instalador (`Instalar.cmd`, `install.sh` o `Instalar.command`).
 `PROJ_DATA` del entorno.
 
 **Linux / macOS.** El instalador es `scripts/install.sh` (en macOS,
-doble clic en `scripts/Instalar.command`). Si `pip` falla con rasterio,
+doble clic en `scripts/Instalar.command`). Compila la interfaz con webpack
+e instala el binario CSS nativo (`lightningcss-darwin-*` o
+`lightningcss-linux-*`) si npm no lo trajo. Si `pip` falla con rasterio,
 instala GDAL del sistema. Si no aparece la ventana de control, instala
 `python3-tk` (Linux) o `brew install python-tk` (macOS); el lanzador
 cae entonces a un diálogo de Zenity o de AppleScript.

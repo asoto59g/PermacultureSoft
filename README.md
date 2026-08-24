@@ -138,6 +138,12 @@ falta un segundo clic.
 Si en Windows la carpeta está en **OneDrive**, no uses `Instalar.cmd` ahí:
 `npm` suele fallar con `EPERM`. Doble clic en `scripts\InstalarLimpio.cmd`
 para clonar e instalar en `%USERPROFILE%\PermacultureSoft` (disco local).
+Ese atajo es solo de Windows.
+
+En **Linux y macOS** el instalador es el mismo flujo (`./scripts/install.sh`
+o doble clic en `Instalar.command`): instala el binario CSS nativo de esa
+plataforma si falta y compila con webpack. No hace falta una copia extra
+fuera de la nube.
 
 | Sistema | Una vez | Cada día |
 | --- | --- | --- |

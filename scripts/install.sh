@@ -270,6 +270,9 @@ if ! "$NODE" -e "require('lightningcss')" >/dev/null 2>&1; then
   [ -n "$native" ] || fail "No hay binario CSS para ${plat}-${arch}."
   echo "    Falta el binario CSS ($native). Instalando..."
   "$NPM" install "$native" --no-save --no-fund --no-audit || fail "Fallo la instalacion de $native (necesario para Tailwind)."
+  if ! "$NODE" -e "require('lightningcss')" >/dev/null 2>&1; then
+    fail "Sigue sin cargarse lightningcss tras instalar $native."
+  fi
 fi
 
 echo "    Compilando la interfaz (un minuto la primera vez)..."
