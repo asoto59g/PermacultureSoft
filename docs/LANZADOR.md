@@ -42,7 +42,7 @@ el mapa al terminar.
 | `PermacultureSoft.vbs` | Windows: doble clic de diario si no usas el icono del escritorio |
 | `PermacultureSoft.desktop` | Linux: lo mismo |
 | `PermacultureSoft.command` | macOS: lo mismo (el instalador también deja un `.app` en el escritorio) |
-| `scripts\` | Instalador y lógica del lanzador |
+| `scripts\` | Instalador y lógica del lanzador. En Windows + OneDrive usa `scripts\InstalarLimpio.cmd` |
 | `backend\` | API Python (DEM, agua, caminos…) |
 | `frontend\` | Interfaz Next.js |
 | `docs\` | Este archivo, el flujo y el manual |

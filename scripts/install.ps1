@@ -26,21 +26,54 @@ function Fail([string]$text) {
   exit 1
 }
 
+function Resolve-PythonExe([string]$launcher, [string[]]$launcherArgs) {
+  try {
+    $printed = & $launcher @($launcherArgs + @('-c', 'import sys; print(sys.executable)')) 2>$null
+    if (-not $printed) { return $null }
+    $exe = ($printed | Select-Object -Last 1).ToString().Trim()
+    if (-not $exe -or -not (Test-Path $exe)) { return $null }
+    # El alias de la Store no instala paquetes nativos (rasterio/GDAL).
+    if ($exe -match 'WindowsApps') { return $null }
+    return $exe
+  } catch {
+    return $null
+  }
+}
+
 function Find-Python {
-  $candidates = @(
-    @{ Cmd = 'py';     Args = @('-3') },
-    @{ Cmd = 'python'; Args = @() }
-  )
-  foreach ($c in $candidates) {
-    $exe = Get-Command $c.Cmd -ErrorAction SilentlyContinue
+  # py -3 elige el mas nuevo (aqui 3.14). rasterio y GDAL van mas
+  # sobrados en 3.11–3.13. Se omiten los Python de WindowsApps.
+  foreach ($tag in @('-3.12', '-3.11', '-3.13')) {
+    if (-not (Get-Command py -ErrorAction SilentlyContinue)) { break }
+    $exe = Resolve-PythonExe 'py' @($tag)
     if (-not $exe) { continue }
-    try {
-      $ver = & $exe.Source @($c.Args + '--version') 2>&1 | Out-String
-      if ($ver -notmatch 'Python 3\.(\d+)') { continue }
-      $minor = [int]$Matches[1]
-      if ($minor -lt 11) { continue }
-      return @{ Exe = $exe.Source; Args = $c.Args; Version = $ver.Trim() }
-    } catch { }
+    $ver = (& $exe --version 2>&1 | Out-String).Trim()
+    return @{ Exe = $exe; Version = $ver }
+  }
+  foreach ($path in @(
+      "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+      "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+      "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+      "$env:ProgramFiles\Python312\python.exe",
+      "$env:ProgramFiles\Python311\python.exe"
+    )) {
+    if (-not (Test-Path $path)) { continue }
+    $ver = (& $path --version 2>&1 | Out-String).Trim()
+    if ($ver -match 'Python 3\.(1[1-3])\b') {
+      return @{ Exe = $path; Version = $ver }
+    }
+  }
+  foreach ($c in @(
+      @{ Cmd = 'py';     Args = @('-3') },
+      @{ Cmd = 'python'; Args = @() }
+    )) {
+    if (-not (Get-Command $c.Cmd -ErrorAction SilentlyContinue)) { continue }
+    $exe = Resolve-PythonExe $c.Cmd $c.Args
+    if (-not $exe) { continue }
+    $ver = (& $exe --version 2>&1 | Out-String).Trim()
+    if ($ver -notmatch 'Python 3\.(\d+)') { continue }
+    if ([int]$Matches[1] -lt 11) { continue }
+    return @{ Exe = $exe; Version = $ver }
   }
   return $null
 }
@@ -135,7 +168,9 @@ $nodeDir = Split-Path $nodeExe
 $env:PATH = "$nodeDir;$env:PATH"
 
 if ($Root -match 'OneDrive') {
-  Write-Host "    Aviso: el proyecto esta en OneDrive. Si npm falla con EPERM, pausa la sincronizacion y borra frontend\node_modules." -ForegroundColor Yellow
+  Write-Host "    Aviso: esta carpeta esta en OneDrive. npm suele fallar con EPERM." -ForegroundColor Yellow
+  Write-Host "    Para una instalacion limpia: doble clic en scripts\InstalarLimpio.cmd" -ForegroundColor Yellow
+  Write-Host "    (clona en $env:USERPROFILE\PermacultureSoft, fuera de OneDrive)." -ForegroundColor Yellow
 }
 
 # ------------------------------------------------------------------ backend
@@ -143,7 +178,7 @@ if ($Root -match 'OneDrive') {
 Write-Step "Entorno de Python"
 if (-not (Test-Path $VenvPy)) {
   Write-Host "    Creando venv..."
-  & $python.Exe @($python.Args + @('-m', 'venv', (Join-Path $Backend 'venv')))
+  & $python.Exe -m venv (Join-Path $Backend 'venv')
   if ($LASTEXITCODE -ne 0) { Fail "Fallo la creacion del venv." }
 } else {
   Write-Host "    venv ya existe, se reutiliza."
@@ -181,6 +216,8 @@ try {
     Write-Host "    Falta el binario CSS ($native). Instalando..."
     cmd.exe /c ($npmLine + "install $native --no-save --no-fund --no-audit")
     if ($LASTEXITCODE -ne 0) { Fail "Fallo la instalacion de $native (necesario para Tailwind)." }
+    cmd.exe /c "set `"PATH=$nodeDir;%PATH%`" && `"$nodeExe`" -e `"require('lightningcss')`""
+    if ($LASTEXITCODE -ne 0) { Fail "Sigue sin cargarse lightningcss tras instalar $native." }
   }
 
   Write-Host "    Compilando la interfaz (un minuto la primera vez)..."

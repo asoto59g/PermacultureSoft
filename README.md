@@ -135,8 +135,13 @@ Comprueba Python y Node, crea el entorno, instala dependencias, deja un
 acceso *PermacultureSoft* en el escritorio y abre la aplicación. No hace
 falta un segundo clic.
 
+Si en Windows la carpeta está en **OneDrive**, no uses `Instalar.cmd` ahí:
+`npm` suele fallar con `EPERM`. Doble clic en `scripts\InstalarLimpio.cmd`
+para clonar e instalar en `%USERPROFILE%\PermacultureSoft` (disco local).
+
 | Sistema | Una vez | Cada día |
 | --- | --- | --- |
+| Windows (OneDrive) | `scripts\InstalarLimpio.cmd` | Acceso del escritorio o `PermacultureSoft.vbs` |
 | Windows | `scripts\Instalar.cmd` | Acceso del escritorio o `PermacultureSoft.vbs` |
 | Linux | `scripts/install.sh` o doble clic en `scripts/Instalar.desktop` | Acceso del escritorio o `PermacultureSoft.desktop` |
 | macOS | doble clic en `scripts/Instalar.command` | Acceso del escritorio o `PermacultureSoft.command` |
