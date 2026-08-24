@@ -245,7 +245,33 @@ if [ ! -f "${FRONTEND}/.env.local" ] && [ -f "${FRONTEND}/.env.example" ]; then
 fi
 
 cd "$FRONTEND"
-"$NPM" install || fail "Fallo npm install."
+# npm junto a node (nvm/fnm/volta). Un omit=optional viejo deja sin binario a Tailwind.
+export PATH="$(dirname "$NODE"):${PATH}"
+unset NPM_CONFIG_OMIT
+"$NPM" install --no-fund --no-audit || fail "Fallo npm install."
+
+if ! "$NODE" -e "require('lightningcss')" >/dev/null 2>&1; then
+  plat="$("$NODE" -p "process.platform")"
+  arch="$("$NODE" -p "process.arch")"
+  native=""
+  case "$plat" in
+    darwin) native="lightningcss-darwin-${arch}" ;;
+    linux)
+      glibc="$("$NODE" -p "try { process.report.getReport().header.glibcVersionRuntime || '' } catch (e) { '' }" 2>/dev/null || true)"
+      if [ "$arch" = "arm" ]; then
+        native="lightningcss-linux-arm-gnueabihf"
+      elif [ -n "$glibc" ]; then
+        native="lightningcss-linux-${arch}-gnu"
+      else
+        native="lightningcss-linux-${arch}-musl"
+      fi
+      ;;
+  esac
+  [ -n "$native" ] || fail "No hay binario CSS para ${plat}-${arch}."
+  echo "    Falta el binario CSS ($native). Instalando..."
+  "$NPM" install "$native" --no-save --no-fund --no-audit || fail "Fallo la instalacion de $native (necesario para Tailwind)."
+fi
+
 echo "    Compilando la interfaz (un minuto la primera vez)..."
 "$NPM" run build || fail "Fallo la compilacion (npm run build)."
 cd "$ROOT"
